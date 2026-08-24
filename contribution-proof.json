@@ -1,0 +1,7 @@
+{
+  "schema": "technocore-contribution-proof-v1",
+  "did": "did:key:z6MkecMwpAGtgcj64rSeDMw91xGRgQcRAW2n8LDGSFeWmstY",
+  "artifact_url": "https://github.com/atanu-dev/technocore-explorer",
+  "commit": "2c743078142270028e50951e60df08a5d1d7152f",
+  "signature": "TH4aMbACXqyvFW0P8vmY7JSydEvxAeCMC4yzRTuEeoo7Smofbo8aLMaYehZfLRdgvgGDCpjs5apMvnqE4-_CDg"
+}
