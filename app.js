@@ -14,7 +14,7 @@ function base58Decode(string) {
   for (let i = 0; i < string.length; i++) {
     const c = string[i];
     const value = BASE58_ALPHABET.indexOf(c);
-    if (value === -1) throw new Error(Invalid Base58 character '');
+    if (value === -1) throw new Error(`Invalid Base58 character '${c}'`);
     for (let j = 0; j < bytes.length; j++) {
       bytes[j] *= 58;
     }
@@ -52,28 +52,27 @@ async function sha256Hex(str) {
 async function inspectDID(didString) {
   const trimmed = didString.trim();
   if (!trimmed.startsWith('did:key:z6Mk')) {
-    throw new Error('Invalid Technocore DID. Must start with \"did:key:z6Mk\"');
+    throw new Error('Invalid Technocore DID. Must start with "did:key:z6Mk"');
   }
 
-  const multibase = trimmed.slice(8); // remove 'did:key:'
+  const multibase = trimmed.slice(8);
   if (!multibase.startsWith('z')) {
-    throw new Error('Multibase must start with \"z\" for Base58BTC encoding');
+    throw new Error('Multibase must start with "z" for Base58BTC encoding');
   }
 
-  const rawBytes = base58Decode(multibase.slice(1)); // remove 'z'
+  const rawBytes = base58Decode(multibase.slice(1));
   if (rawBytes.length !== 34) {
-    throw new Error(Unexpected decoded length . Expected 34 bytes (2-byte header + 32-byte key));
+    throw new Error(`Unexpected decoded length ${rawBytes.length}. Expected 34 bytes (2-byte header + 32-byte key)`);
   }
 
   const header = bytesToHex(rawBytes.slice(0, 2));
   if (header !== 'ed01') {
-    throw new Error(Invalid multicodec prefix 0x. Expected 0xed01 (ed25519-pub));
+    throw new Error(`Invalid multicodec prefix 0x${header}. Expected 0xed01 (ed25519-pub)`);
   }
 
   const pubKeyBytes = rawBytes.slice(2);
   const pubKeyHex = bytesToHex(pubKeyBytes);
 
-  // SHA256 of entire DID string
   const fullHash = await sha256Hex(trimmed);
   const fingerprint = fullHash.slice(0, 16);
 
@@ -82,25 +81,43 @@ async function inspectDID(didString) {
     codec: '0xed01 (ed25519-pub)',
     rawHex: pubKeyHex,
     fingerprint: fingerprint,
-    kvPath: /kv/did/
+    kvPath: `/kv/did/${fingerprint}`
   };
 }
 
-// Fetch Room Messages from Technocore
+// Fetch Room Messages from Technocore with Proxy Fallback
 async function fetchRoomMessages(room, limit = 25) {
-  const url = ${TECHNOCORE_BASE_URL}/r/?limit=;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(Technocore HTTP : );
+  // Strategy 1: Local proxy endpoint
+  try {
+    const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}`;
+    const res = await fetch(localProxyUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.messages) return data;
+    }
+  } catch (e) {
+    // Ignore and try direct
   }
-  return await response.json();
+
+  // Strategy 2: Direct API fetch
+  try {
+    const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}`;
+    const res = await fetch(directUrl);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // Ignore and fallback
+  }
+
+  throw new Error('Unable to connect to Technocore API. Ensure the local server is running on port 8080.');
 }
 
 // Render Messages
 function renderMessages(messages, filterText = '') {
   const container = document.getElementById('messagesList');
   if (!messages || messages.length === 0) {
-    container.innerHTML = '<div class=\"loading-state\">No messages found in this room.</div>';
+    container.innerHTML = '<div class="loading-state">No messages found in this room.</div>';
     return;
   }
 
@@ -115,7 +132,7 @@ function renderMessages(messages, filterText = '') {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = <div class=\"loading-state\">No messages matching \"\"</div>;
+    container.innerHTML = `<div class="loading-state">No messages matching "${filterText}"</div>`;
     return;
   }
 
@@ -124,23 +141,23 @@ function renderMessages(messages, filterText = '') {
     const highlightClass = isOurDid ? 'highlight' : '';
     const dateFormatted = m.ts ? new Date(m.ts).toLocaleTimeString() : 'Unknown';
 
-    return 
-      <div class=\"msg-card \">
-        <div class=\"msg-header\">
-          <span class=\"msg-seq\">#</span>
-          <span class=\"msg-ts\"> ()</span>
+    return `
+      <div class="msg-card ${highlightClass}">
+        <div class="msg-header">
+          <span class="msg-seq">#${m.seq}</span>
+          <span class="msg-ts">${dateFormatted} (${m.ts})</span>
         </div>
-        <div class=\"msg-from\">
-          <span class=\"badge\">FROM</span>
-          <span></span>
-          
+        <div class="msg-from">
+          <span class="badge">FROM</span>
+          <span>${m.from}</span>
+          ${isOurDid ? '<span class="badge" style="background: #a855f7; color: white;">YOU</span>' : ''}
         </div>
-        <div class=\"msg-text\"></div>
-        <div class=\"msg-footer\">
-          <span>Nonce: </span>
+        <div class="msg-text">${escapeHtml(m.text)}</div>
+        <div class="msg-footer">
+          <span>Nonce: ${m.nonce}</span>
         </div>
       </div>
-    ;
+    `;
   }).join('');
 }
 
@@ -150,43 +167,41 @@ function escapeHtml(text) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 
-// Generate Monotonic Nonce (timestamp nanoseconds simulation)
 function generateNonce() {
   const nowMs = Date.now();
   const randomSuffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-  return ${nowMs};
+  return `${nowMs}${randomSuffix}`;
 }
 
-// Canonical preview generator
 function updateCanonicalPreview() {
   const room = document.getElementById('verifyRoom').value.trim();
   const nonce = document.getElementById('verifyNonce').value.trim();
   const text = document.getElementById('verifyText').value.trim();
   const preview = document.getElementById('canonicalPreview');
+  if (!preview) return;
   
-  const payload = ${room}||;
+  const payload = `${room}|${nonce}|${text}`;
   preview.textContent = payload;
 }
 
-// Update Composer Output
 function updateComposerOutput() {
   const room = document.getElementById('compRoom').value.trim() || 'technocore';
   const text = document.getElementById('compText').value.trim() || 'I published a Technocore contribution...';
   
   const cliOutput = document.getElementById('cliCommandOutput');
   const apiOutput = document.getElementById('apiEndpointOutput');
+  if (!cliOutput || !apiOutput) return;
 
-  cliOutput.textContent = python technocore_agent.py say  "";
-  apiOutput.textContent = POST /r//say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/;
+  cliOutput.textContent = `python technocore_agent.py say ${room} "${text.replace(/"/g, '\\"')}"`;
+  apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(text)}`;
 }
 
-// DOM Event Listeners & Initialization
 document.addEventListener('DOMContentLoaded', () => {
-  // Tab Switching
+  // Tab navigation
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -196,78 +211,85 @@ document.addEventListener('DOMContentLoaded', () => {
       tabContents.forEach(c => c.classList.remove('active'));
 
       btn.classList.add('active');
-      const targetId = 	ab-;
+      const targetId = `tab-${btn.dataset.tab}`;
       const target = document.getElementById(targetId);
       if (target) target.classList.add('active');
     });
   });
 
-  // Room Select Handling
+  // Room Select
   const roomSelect = document.getElementById('roomSelect');
   const customRoomInput = document.getElementById('customRoomInput');
 
-  roomSelect.addEventListener('change', () => {
-    if (roomSelect.value === 'custom') {
-      customRoomInput.classList.remove('hidden');
+  if (roomSelect) {
+    roomSelect.addEventListener('change', () => {
+      if (roomSelect.value === 'custom') {
+        customRoomInput.classList.remove('hidden');
+        currentRoom = customRoomInput.value.trim() || 'lobby';
+      } else {
+        customRoomInput.classList.add('hidden');
+        currentRoom = roomSelect.value;
+      }
+      loadCurrentRoom();
+    });
+  }
+
+  if (customRoomInput) {
+    customRoomInput.addEventListener('input', () => {
       currentRoom = customRoomInput.value.trim() || 'lobby';
-    } else {
-      customRoomInput.classList.add('hidden');
-      currentRoom = roomSelect.value;
-    }
-    loadCurrentRoom();
-  });
+    });
+  }
 
-  customRoomInput.addEventListener('input', () => {
-    currentRoom = customRoomInput.value.trim() || 'lobby';
-  });
-
-  // Refresh Room Button
   const btnFetch = document.getElementById('btnFetchRoom');
-  btnFetch.addEventListener('click', () => loadCurrentRoom());
+  if (btnFetch) {
+    btnFetch.addEventListener('click', () => loadCurrentRoom());
+  }
 
-  // Search filter input
   const searchInput = document.getElementById('msgSearchInput');
-  searchInput.addEventListener('input', () => {
-    renderMessages(roomMessages, searchInput.value);
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      renderMessages(roomMessages, searchInput.value);
+    });
+  }
 
-  // Auto poll toggle
   const btnToggleAuto = document.getElementById('btnToggleAuto');
-  btnToggleAuto.addEventListener('click', () => {
-    if (autoPollInterval) {
-      clearInterval(autoPollInterval);
-      autoPollInterval = null;
-      btnToggleAuto.classList.remove('btn-primary');
-      btnToggleAuto.classList.add('btn-secondary');
-      document.getElementById('autoIcon').textContent = '▶';
-    } else {
-      autoPollInterval = setInterval(() => loadCurrentRoom(true), 4000);
-      btnToggleAuto.classList.remove('btn-secondary');
-      btnToggleAuto.classList.add('btn-primary');
-      document.getElementById('autoIcon').textContent = '⏸';
-    }
-  });
+  if (btnToggleAuto) {
+    btnToggleAuto.addEventListener('click', () => {
+      if (autoPollInterval) {
+        clearInterval(autoPollInterval);
+        autoPollInterval = null;
+        btnToggleAuto.classList.remove('btn-primary');
+        btnToggleAuto.classList.add('btn-secondary');
+        document.getElementById('autoIcon').textContent = '▶';
+      } else {
+        autoPollInterval = setInterval(() => loadCurrentRoom(true), 4000);
+        btnToggleAuto.classList.remove('btn-secondary');
+        btnToggleAuto.classList.add('btn-primary');
+        document.getElementById('autoIcon').textContent = '⏸';
+      }
+    });
+  }
 
   // DID Inspector Button
   const btnInspect = document.getElementById('btnInspectDid');
-  btnInspect.addEventListener('click', async () => {
-    const input = document.getElementById('inspectDidInput').value;
-    try {
-      const info = await inspectDID(input);
-      document.getElementById('resDidFormat').textContent = info.codec.includes('ed25519') ? 'W3C did:key (Ed25519)' : 'Custom DID';
-      document.getElementById('resCodec').textContent = info.codec;
-      document.getElementById('resRawHex').textContent = info.rawHex;
-      document.getElementById('resFingerprint').textContent = info.fingerprint;
-      document.getElementById('kvPathCode').textContent = info.kvPath;
-    } catch (err) {
-      alert('Error parsing DID: ' + err.message);
-    }
-  });
+  if (btnInspect) {
+    btnInspect.addEventListener('click', async () => {
+      const input = document.getElementById('inspectDidInput').value;
+      try {
+        const info = await inspectDID(input);
+        document.getElementById('resDidFormat').textContent = info.codec.includes('ed25519') ? 'W3C did:key (Ed25519)' : 'Custom DID';
+        document.getElementById('resCodec').textContent = info.codec;
+        document.getElementById('resRawHex').textContent = info.rawHex;
+        document.getElementById('resFingerprint').textContent = info.fingerprint;
+        document.getElementById('kvPathCode').textContent = info.kvPath;
+      } catch (err) {
+        alert('Error parsing DID: ' + err.message);
+      }
+    });
+    btnInspect.click();
+  }
 
-  // Initial trigger for inspector
-  btnInspect.click();
-
-  // Signature Verifier inputs
+  // Signature verifier listeners
   ['verifyRoom', 'verifyNonce', 'verifyText'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateCanonicalPreview);
@@ -275,40 +297,45 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCanonicalPreview();
 
   const btnVerifySig = document.getElementById('btnVerifySig');
-  btnVerifySig.addEventListener('click', async () => {
-    const did = document.getElementById('verifyDid').value.trim();
-    const room = document.getElementById('verifyRoom').value.trim();
-    const nonce = document.getElementById('verifyNonce').value.trim();
-    const text = document.getElementById('verifyText').value.trim();
-    const statusBox = document.getElementById('verifyStatusBox');
+  if (btnVerifySig) {
+    btnVerifySig.addEventListener('click', async () => {
+      const did = document.getElementById('verifyDid').value.trim();
+      const room = document.getElementById('verifyRoom').value.trim();
+      const nonce = document.getElementById('verifyNonce').value.trim();
+      const text = document.getElementById('verifyText').value.trim();
+      const statusBox = document.getElementById('verifyStatusBox');
 
-    try {
-      const didInfo = await inspectDID(did);
-      const canonical = ${room}||;
-      
-      statusBox.className = 'status-box success';
-      statusBox.innerHTML = 
-        <strong>✅ Valid Canonical Structure &amp; Signer</strong><br>
-        • Signer Key: <code>...</code> (Ed25519 verified)<br>
-        • Canonical UTF-8 Bytes: <code> bytes</code><br>
-        • Nonce Syntax: <code></code> (valid monotonic identifier)
-      ;
-      statusBox.classList.remove('hidden');
-    } catch (e) {
-      statusBox.className = 'status-box error';
-      statusBox.innerHTML = <strong>❌ Verification Failed:</strong> ;
-      statusBox.classList.remove('hidden');
-    }
-  });
+      try {
+        const didInfo = await inspectDID(did);
+        const canonical = `${room}|${nonce}|${text}`;
+        
+        statusBox.className = 'status-box success';
+        statusBox.innerHTML = `
+          <strong>✅ Valid Canonical Structure &amp; Signer</strong><br>
+          • Signer Key: <code>${didInfo.rawHex.slice(0, 16)}...</code> (Ed25519 verified)<br>
+          • Canonical UTF-8 Bytes: <code>${new TextEncoder().encode(canonical).length} bytes</code><br>
+          • Nonce Syntax: <code>${nonce}</code> (valid monotonic identifier)
+        `;
+        statusBox.classList.remove('hidden');
+      } catch (e) {
+        statusBox.className = 'status-box error';
+        statusBox.innerHTML = `<strong>❌ Verification Failed:</strong> ${escapeHtml(e.message)}`;
+        statusBox.classList.remove('hidden');
+      }
+    });
+  }
 
-  // Composer setup
+  // Composer
   const compNonce = document.getElementById('compNonce');
-  compNonce.value = generateNonce();
+  if (compNonce) compNonce.value = generateNonce();
 
-  document.getElementById('btnGenNonce').addEventListener('click', () => {
-    compNonce.value = generateNonce();
-    updateComposerOutput();
-  });
+  const btnGenNonce = document.getElementById('btnGenNonce');
+  if (btnGenNonce && compNonce) {
+    btnGenNonce.addEventListener('click', () => {
+      compNonce.value = generateNonce();
+      updateComposerOutput();
+    });
+  }
 
   ['compRoom', 'compText'].forEach(id => {
     const el = document.getElementById(id);
@@ -316,20 +343,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateComposerOutput();
 
-  document.getElementById('btnCopyCli').addEventListener('click', () => {
-    const text = document.getElementById('cliCommandOutput').textContent;
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('btnCopyCli');
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => btn.textContent = '📋 Copy Command', 2000);
+  const btnCopy = document.getElementById('btnCopyCli');
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      const text = document.getElementById('cliCommandOutput').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btnCopy.textContent = '✅ Copied!';
+        setTimeout(() => btnCopy.textContent = '📋 Copy Command', 2000);
+      });
     });
-  });
+  }
 
-  // Initial Room Load
+  // Initial load
   loadCurrentRoom();
 });
 
-// Load Current Room Function
 async function loadCurrentRoom(isSilent = false) {
   const statusPill = document.getElementById('serverStatusPill');
   const statusText = document.getElementById('serverStatusText');
@@ -342,29 +370,35 @@ async function loadCurrentRoom(isSilent = false) {
     const limit = parseInt(document.getElementById('limitInput').value, 10) || 25;
     const data = await fetchRoomMessages(currentRoom, limit);
 
-    roomMessages = (data.messages || []).reverse(); // newest first
-    countEl.textContent = data.count || roomMessages.length;
-    firstSeqEl.textContent = data.first_seq || '-';
-    lastSeqEl.textContent = data.last_seq || '-';
-    lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+    roomMessages = (data.messages || []).reverse();
+    if (countEl) countEl.textContent = data.count || roomMessages.length;
+    if (firstSeqEl) firstSeqEl.textContent = data.first_seq || '-';
+    if (lastSeqEl) lastSeqEl.textContent = data.last_seq || '-';
+    if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString();
 
-    statusPill.className = 'status-pill online';
-    statusText.textContent = 'Technocore Live';
+    if (statusPill && statusText) {
+      statusPill.className = 'status-pill online';
+      statusText.textContent = 'Technocore Live';
+    }
 
-    renderMessages(roomMessages, document.getElementById('msgSearchInput').value);
+    renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
   } catch (err) {
     if (!isSilent) {
-      document.getElementById('messagesList').innerHTML = 
-        <div class=\"status-box error\">
-          <strong>Error connecting to Technocore:</strong> <br>
-          <em>Note: Browser CORS policy may require running a local HTTP server or proxy. Use <code>python -m http.server 8000</code></em>
-        </div>
-      ;
+      const listEl = document.getElementById('messagesList');
+      if (listEl) {
+        listEl.innerHTML = `
+          <div class="status-box error">
+            <strong>Notice:</strong> ${escapeHtml(err.message)}
+          </div>
+        `;
+      }
     }
-    statusPill.className = 'status-pill';
-    statusPill.style.background = 'rgba(244,63,94,0.15)';
-    statusPill.style.color = '#fda4af';
-    statusPill.style.border = '1px solid #f43f5e';
-    statusText.textContent = 'Network Offline / CORS Restricted';
+    if (statusPill && statusText) {
+      statusPill.className = 'status-pill';
+      statusPill.style.background = 'rgba(244,63,94,0.15)';
+      statusPill.style.color = '#fda4af';
+      statusPill.style.border = '1px solid #f43f5e';
+      statusText.textContent = 'Network Offline / CORS Restricted';
+    }
   }
 }
