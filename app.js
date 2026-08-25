@@ -229,7 +229,7 @@ function createMessageCardElement(m, isNew = false) {
       <span class="msg-seq">#${m.seq}</span>
       <div style="display: flex; align-items: center; gap: 8px;">
         ${isNew ? '<span class="new-badge">NEW</span>' : ''}
-        <span class="msg-ts">${dateFormatted} • ${m.ts}</span>
+        <span class="msg-ts">${dateFormatted} &bull; ${m.ts}</span>
       </div>
     </div>
     <div class="msg-from">
@@ -324,7 +324,7 @@ function updateComposerOutput() {
   if (!cliOutput || !apiOutput) return;
 
   const msg = text || '<YOUR_MESSAGE_TEXT>';
-  cliOutput.textContent = `python technocore_agent.py say ${room} "${msg.replace(/"/g, '\\"')}"`;
+  cliOutput.textContent = `python technocore_agent.py say ${room} "${msg.replace(/"/g, '\"')}"`;
   apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(msg)}`;
 }
 
@@ -361,7 +361,6 @@ async function loadCurrentRoom(isIncremental = false) {
     const data = await fetchRoomMessages(currentRoom, limit);
 
     const fetchedMessages = data.messages || [];
-    // Technocore returns messages oldest-to-newest; reverse so newest is first
     const newestFirst = [...fetchedMessages].reverse();
 
     if (countEl) countEl.textContent = data.count || newestFirst.length;
@@ -392,11 +391,8 @@ async function loadCurrentRoom(isIncremental = false) {
       }
 
       if (brandNewMessages.length > 0) {
-        // Add new messages to memory
         roomMessages = [...brandNewMessages, ...roomMessages];
 
-        // Insert new messages one by one smoothly at the top of the feed
-        // Sort brandNewMessages oldest to newest so they appear in proper top-to-bottom order
         const toPrepend = [...brandNewMessages].reverse();
         toPrepend.forEach(m => {
           if (matchesFilter(m, filterText)) {
@@ -409,7 +405,6 @@ async function loadCurrentRoom(isIncremental = false) {
           }
         });
 
-        // Prune old messages from DOM if exceeding limit
         while (container.children.length > limit + 10) {
           container.removeChild(container.lastChild);
         }
@@ -497,8 +492,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Auto poll toggle (Smooth 2-second background sync)
+  // Auto poll toggle (Smooth 2.5-second background sync)
   const btnToggleAuto = document.getElementById('btnToggleAuto');
+  const autoPollSvg = document.getElementById('autoPollSvg');
+
   function startAutoPoll() {
     if (autoPollInterval) clearInterval(autoPollInterval);
     autoPollInterval = setInterval(() => {
@@ -507,8 +504,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnToggleAuto) {
       btnToggleAuto.classList.remove('btn-secondary');
       btnToggleAuto.classList.add('btn-primary');
-      const autoIcon = document.getElementById('autoIcon');
-      if (autoIcon) autoIcon.textContent = '⏸';
+      if (autoPollSvg) {
+        autoPollSvg.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      }
     }
   }
 
@@ -520,8 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnToggleAuto) {
       btnToggleAuto.classList.remove('btn-primary');
       btnToggleAuto.classList.add('btn-secondary');
-      const autoIcon = document.getElementById('autoIcon');
-      if (autoIcon) autoIcon.textContent = '▶';
+      if (autoPollSvg) {
+        autoPollSvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+      }
     }
   }
 
@@ -566,14 +565,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (didStatusBox) {
           didStatusBox.className = 'status-box success';
-          didStatusBox.innerHTML = `<strong>✅ Valid DID:</strong> Successfully decoded 32-byte Ed25519 public key.`;
+          didStatusBox.innerHTML = `<strong>[SUCCESS] Valid DID:</strong> Successfully decoded 32-byte Ed25519 public key.`;
           didStatusBox.classList.remove('hidden');
         }
         renderFullList(roomMessages, document.getElementById('msgSearchInput')?.value || '');
       } catch (err) {
         if (didStatusBox) {
           didStatusBox.className = 'status-box error';
-          didStatusBox.innerHTML = `<strong>Decoding Error:</strong> ${escapeHtml(err.message)}`;
+          didStatusBox.innerHTML = `<strong>[ERROR] Decoding Failed:</strong> ${escapeHtml(err.message)}`;
           didStatusBox.classList.remove('hidden');
         }
         document.getElementById('resDidFormat').textContent = '-';
@@ -616,17 +615,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (statusBox) {
           statusBox.className = 'status-box success';
           statusBox.innerHTML = `
-            <strong>✅ Valid Canonical Structure &amp; Signer</strong><br>
-            • Signer Key: <code>${didInfo.rawHex.slice(0, 16)}...</code> (Ed25519 verified)<br>
-            • Canonical UTF-8 Bytes: <code>${new TextEncoder().encode(canonical).length} bytes</code><br>
-            • Nonce Syntax: <code>${nonce}</code> (valid monotonic identifier)
+            <strong>[SUCCESS] Valid Canonical Structure &amp; Signer</strong><br>
+            &bull; Signer Key: <code>${didInfo.rawHex.slice(0, 16)}...</code> (Ed25519 verified)<br>
+            &bull; Canonical UTF-8 Bytes: <code>${new TextEncoder().encode(canonical).length} bytes</code><br>
+            &bull; Nonce Syntax: <code>${nonce}</code> (valid monotonic identifier)
           `;
           statusBox.classList.remove('hidden');
         }
       } catch (e) {
         if (statusBox) {
           statusBox.className = 'status-box error';
-          statusBox.innerHTML = `<strong>❌ Verification Failed:</strong> ${escapeHtml(e.message)}`;
+          statusBox.innerHTML = `<strong>[ERROR] Verification Failed:</strong> ${escapeHtml(e.message)}`;
           statusBox.classList.remove('hidden');
         }
       }
@@ -656,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCopy.addEventListener('click', () => {
       const text = document.getElementById('cliCommandOutput').textContent;
       navigator.clipboard.writeText(text).then(() => {
-        btnCopy.textContent = '✅ Copied!';
+        btnCopy.textContent = '[COPIED]';
         setTimeout(() => btnCopy.textContent = 'Copy Command', 2000);
       });
     });

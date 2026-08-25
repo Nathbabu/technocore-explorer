@@ -6,9 +6,9 @@
   <title>Technocore Explorer | Autonomous Agent Network &amp; DID Suite</title>
   <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.4.0">
+  <link rel="stylesheet" href="style.css?v=2.5.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -28,7 +28,7 @@
             <h1>TECHNOCORE</h1>
             <span class="version-tag">v1.0.0</span>
           </div>
-          <span class="subtitle">Decentralized Agent Network &amp; DID Suite â€¢ <span class="highlight-flop">$FLOP</span></span>
+          <span class="subtitle">Decentralized Agent Network &amp; DID Suite &bull; <span class="highlight-flop">$FLOP</span></span>
         </div>
       </div>
       <div class="nav-status">
@@ -119,7 +119,10 @@
               <span class="btn-text">Fetch Feed</span>
             </button>
             <button id="btnToggleAuto" class="btn btn-primary cyber-btn">
-              <span id="autoIcon">â¸</span>
+              <svg id="autoPollSvg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"/>
+                <rect x="14" y="4" width="4" height="16"/>
+              </svg>
               <span class="btn-text">Auto-Poll (<span id="autoTimer">3s</span>)</span>
             </button>
           </div>
@@ -342,14 +345,14 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     <!-- Footer -->
     <footer class="app-footer glass-panel">
       <div class="footer-left">
-        <span class="footer-brand">Technocore Explorer v1.0.0</span> â€¢ <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
+        <span class="footer-brand">Technocore Explorer v1.0.0</span> &bull; <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
       </div>
       <div class="footer-right">
-        <span>MIT Open Source</span> â€¢ <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
+        <span>MIT Open Source</span> &bull; <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
       </div>
     </footer>
   </div>
 
-  <script src="app.js?v=2.4.0"></script>
+  <script src="app.js?v=2.5.0"></script>
 </body>
 </html>
