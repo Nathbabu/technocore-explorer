@@ -1,4 +1,4 @@
-// Technocore Explorer & DID Inspector JavaScript
+// Technocore Explorer & DID Inspector
 const TECHNOCORE_BASE_URL = 'https://technocore.chat';
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
@@ -7,7 +7,119 @@ let currentRoom = 'lobby';
 let autoPollInterval = null;
 let roomMessages = [];
 
-// Base58BTC Decoder
+// ==================== 1. HIGH-FPS 3D CANVAS PARTICLE NEXUS ====================
+function initParticleNexus() {
+  const canvas = document.getElementById('bgCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const numParticles = Math.min(80, Math.floor((width * height) / 18000));
+  const particles = [];
+
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      z: Math.random() * 800,
+      vx: (Math.random() - 0.5) * 0.7,
+      vy: (Math.random() - 0.5) * 0.7,
+      vz: (Math.random() - 0.5) * 0.5,
+      radius: Math.random() * 2 + 1,
+      color: Math.random() > 0.4 ? 'rgba(0, 242, 255,' : 'rgba(139, 92, 246,'
+    });
+  }
+
+  let mouseX = width / 2;
+  let mouseY = height / 2;
+  window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  // FPS Counter
+  let lastFrameTime = performance.now();
+  let frameCount = 0;
+  let fpsDisplay = document.getElementById('fpsDisplay');
+
+  function render() {
+    const now = performance.now();
+    frameCount++;
+    if (now - lastFrameTime >= 1000) {
+      if (fpsDisplay) {
+        fpsDisplay.textContent = `${frameCount} FPS`;
+      }
+      frameCount = 0;
+      lastFrameTime = now;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Update & draw particles
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.z += p.vz;
+
+      if (p.x < 0) p.x = width;
+      if (p.x > width) p.x = 0;
+      if (p.y < 0) p.y = height;
+      if (p.y > height) p.y = 0;
+      if (p.z < 0) p.z = 800;
+      if (p.z > 800) p.z = 0;
+
+      // Perspective projection
+      const fov = 400;
+      const scale = fov / (fov + p.z);
+      const projX = (p.x - width / 2) * scale + width / 2;
+      const projY = (p.y - height / 2) * scale + height / 2;
+      const radius = p.radius * scale;
+      const alpha = Math.max(0.15, (1 - p.z / 800) * 0.7);
+
+      ctx.beginPath();
+      ctx.arc(projX, projY, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `${p.color}${alpha})`;
+      ctx.fill();
+
+      // Connect near particles
+      for (let j = i + 1; j < particles.length; j++) {
+        const p2 = particles[j];
+        const dx = p.x - p2.x;
+        const dy = p.y - p2.y;
+        const dz = p.z - p2.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist < 140) {
+          const scale2 = fov / (fov + p2.z);
+          const projX2 = (p2.x - width / 2) * scale2 + width / 2;
+          const projY2 = (p2.y - height / 2) * scale2 + height / 2;
+          const lineAlpha = (1 - dist / 140) * 0.25 * alpha;
+
+          ctx.beginPath();
+          ctx.moveTo(projX, projY);
+          ctx.lineTo(projX2, projY2);
+          ctx.strokeStyle = `rgba(0, 242, 255, ${lineAlpha})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      }
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
+}
+
+// ==================== 2. CRYPTOGRAPHIC & DID UTILITIES ====================
 function base58Decode(string) {
   if (string.length === 0) return new Uint8Array(0);
   const bytes = [0];
@@ -48,7 +160,6 @@ async function sha256Hex(str) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Inspect DID function
 async function inspectDID(didString) {
   const trimmed = didString.trim();
   if (!trimmed.startsWith('did:key:z6Mk')) {
@@ -85,9 +196,9 @@ async function inspectDID(didString) {
   };
 }
 
-// Fetch Room Messages from Technocore with Proxy Fallback
+// ==================== 3. LIVE ROOM STREAMING ====================
 async function fetchRoomMessages(room, limit = 25) {
-  // Strategy 1: Local proxy endpoint
+  // Try local proxy endpoint first
   try {
     const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}`;
     const res = await fetch(localProxyUrl);
@@ -96,10 +207,10 @@ async function fetchRoomMessages(room, limit = 25) {
       if (data && data.messages) return data;
     }
   } catch (e) {
-    // Ignore and try direct
+    // Ignore proxy error and try direct
   }
 
-  // Strategy 2: Direct API fetch
+  // Direct fetch with format=json
   try {
     const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}`;
     const res = await fetch(directUrl);
@@ -107,17 +218,16 @@ async function fetchRoomMessages(room, limit = 25) {
       return await res.json();
     }
   } catch (e) {
-    // Ignore and fallback
+    // Direct failed
   }
 
   throw new Error('Unable to connect to Technocore API. Ensure the local server is running on port 8080.');
 }
 
-// Render Messages
 function renderMessages(messages, filterText = '') {
   const container = document.getElementById('messagesList');
   if (!messages || messages.length === 0) {
-    container.innerHTML = '<div class="loading-state">No messages found in this room.</div>';
+    container.innerHTML = '<div class="loading-state"><span>No messages found in this room.</span></div>';
     return;
   }
 
@@ -132,7 +242,7 @@ function renderMessages(messages, filterText = '') {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="loading-state">No messages matching "${filterText}"</div>`;
+    container.innerHTML = `<div class="loading-state"><span>No messages matching "${escapeHtml(filterText)}"</span></div>`;
     return;
   }
 
@@ -145,16 +255,16 @@ function renderMessages(messages, filterText = '') {
       <div class="msg-card ${highlightClass}">
         <div class="msg-header">
           <span class="msg-seq">#${m.seq}</span>
-          <span class="msg-ts">${dateFormatted} (${m.ts})</span>
+          <span class="msg-ts">${dateFormatted} • ${m.ts}</span>
         </div>
         <div class="msg-from">
-          <span class="badge">FROM</span>
-          <span>${m.from}</span>
-          ${isOurDid ? '<span class="badge" style="background: #a855f7; color: white;">YOU</span>' : ''}
+          <span class="badge">AGENT</span>
+          <span class="code-font">${m.from}</span>
+          ${isOurDid ? '<span class="badge you">YOUR DID</span>' : ''}
         </div>
         <div class="msg-text">${escapeHtml(m.text)}</div>
         <div class="msg-footer">
-          <span>Nonce: ${m.nonce}</span>
+          <span>NONCE: ${m.nonce}</span>
         </div>
       </div>
     `;
@@ -178,9 +288,9 @@ function generateNonce() {
 }
 
 function updateCanonicalPreview() {
-  const room = document.getElementById('verifyRoom').value.trim();
-  const nonce = document.getElementById('verifyNonce').value.trim();
-  const text = document.getElementById('verifyText').value.trim();
+  const room = document.getElementById('verifyRoom')?.value.trim() || 'lobby';
+  const nonce = document.getElementById('verifyNonce')?.value.trim() || '';
+  const text = document.getElementById('verifyText')?.value.trim() || '';
   const preview = document.getElementById('canonicalPreview');
   if (!preview) return;
   
@@ -189,8 +299,8 @@ function updateCanonicalPreview() {
 }
 
 function updateComposerOutput() {
-  const room = document.getElementById('compRoom').value.trim() || 'technocore';
-  const text = document.getElementById('compText').value.trim() || 'I published a Technocore contribution...';
+  const room = document.getElementById('compRoom')?.value.trim() || 'technocore';
+  const text = document.getElementById('compText')?.value.trim() || 'I published a Technocore contribution...';
   
   const cliOutput = document.getElementById('cliCommandOutput');
   const apiOutput = document.getElementById('apiEndpointOutput');
@@ -200,7 +310,11 @@ function updateComposerOutput() {
   apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(text)}`;
 }
 
+// ==================== 4. APP INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+  // Start high-FPS background
+  initParticleNexus();
+
   // Tab navigation
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -217,9 +331,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Room Select
+  // Room Selector
   const roomSelect = document.getElementById('roomSelect');
   const customRoomInput = document.getElementById('customRoomInput');
+  const activeRoomBadge = document.getElementById('activeRoomBadge');
 
   if (roomSelect) {
     roomSelect.addEventListener('change', () => {
@@ -230,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         customRoomInput.classList.add('hidden');
         currentRoom = roomSelect.value;
       }
+      if (activeRoomBadge) activeRoomBadge.textContent = currentRoom;
       loadCurrentRoom();
     });
   }
@@ -237,6 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (customRoomInput) {
     customRoomInput.addEventListener('input', () => {
       currentRoom = customRoomInput.value.trim() || 'lobby';
+      if (activeRoomBadge) activeRoomBadge.textContent = currentRoom;
     });
   }
 
@@ -289,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnInspect.click();
   }
 
-  // Signature verifier listeners
+  // Signature Verifier
   ['verifyRoom', 'verifyNonce', 'verifyText'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateCanonicalPreview);
@@ -354,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initial load
+  // Initial Load
   loadCurrentRoom();
 });
 
@@ -378,7 +495,7 @@ async function loadCurrentRoom(isSilent = false) {
 
     if (statusPill && statusText) {
       statusPill.className = 'status-pill online';
-      statusText.textContent = 'Technocore Live';
+      statusText.textContent = 'LIVE NETWORK';
     }
 
     renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
@@ -388,7 +505,7 @@ async function loadCurrentRoom(isSilent = false) {
       if (listEl) {
         listEl.innerHTML = `
           <div class="status-box error">
-            <strong>Notice:</strong> ${escapeHtml(err.message)}
+            <strong>Stream Status:</strong> ${escapeHtml(err.message)}
           </div>
         `;
       }
@@ -398,7 +515,7 @@ async function loadCurrentRoom(isSilent = false) {
       statusPill.style.background = 'rgba(244,63,94,0.15)';
       statusPill.style.color = '#fda4af';
       statusPill.style.border = '1px solid #f43f5e';
-      statusText.textContent = 'Network Offline / CORS Restricted';
+      statusText.textContent = 'Network Offline / Connecting...';
     }
   }
 }
