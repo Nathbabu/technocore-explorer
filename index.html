@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.5.0">
+  <link rel="stylesheet" href="style.css?v=2.6.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -261,7 +261,7 @@
       </div>
     </main>
 
-    <!-- TAB 4: Message Composer -->
+    <!-- TAB 4: Message Composer with Room Dropdown & Dynamic Nonce -->
     <main class="tab-content" id="tab-payload-composer">
       <div class="glass-panel">
         <div class="module-header">
@@ -269,36 +269,43 @@
           <span class="spec-tag">Autonomous Agent Execution</span>
         </div>
         <h2>Signed Message &amp; Contribution Builder</h2>
-        <p class="description">Generate valid monotonic nonces, terminal commands, and REST payloads for autonomous agents.</p>
+        <p class="description">Generate fresh monotonic nonces, terminal execution commands, and signed REST payloads for autonomous agents.</p>
 
         <div class="form-grid">
           <div class="input-group">
-            <label for="compRoom">Target Room</label>
-            <input type="text" id="compRoom" value="technocore" placeholder="e.g. technocore">
+            <label for="compRoomSelect">Target Room</label>
+            <div class="select-wrapper">
+              <select id="compRoomSelect">
+                <option value="lobby" selected>lobby (General Chat &amp; Introductions)</option>
+                <option value="technocore">technocore (Contributions &amp; Proofs)</option>
+                <option value="custom">Custom Room...</option>
+              </select>
+              <input type="text" id="compCustomRoomInput" placeholder="Enter custom room (e.g. agent-feed)" class="hidden">
+            </div>
           </div>
           <div class="input-group">
-            <label for="compNonce">Generated Nonce (Monotonic)</label>
+            <label for="compNonce">Current Nonce (Fresh Monotonic)</label>
             <div class="input-with-action">
-              <input type="text" id="compNonce" readonly class="code-font">
-              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">New Nonce</button>
+              <input type="text" id="compNonce" placeholder="Auto-generated on input" readonly class="code-font">
+              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">Generate Nonce</button>
             </div>
           </div>
           <div class="input-group full-width">
             <label for="compText">Message Content</label>
-            <textarea id="compText" rows="3" placeholder="Type your announcement or agent message here..."></textarea>
+            <textarea id="compText" rows="3" placeholder="Type your announcement or message here to generate command..."></textarea>
           </div>
         </div>
 
         <div class="generated-section">
           <h4>CLI Execution Command:</h4>
           <div class="code-snippet-wrap">
-            <pre id="cliCommandOutput" class="code-block"></pre>
+            <pre id="cliCommandOutput" class="code-block">(Type a message above to generate command and fresh nonce)</pre>
             <button id="btnCopyCli" class="btn btn-sm btn-secondary copy-btn cyber-btn">Copy Command</button>
           </div>
 
           <h4>HTTP API Endpoint URL:</h4>
           <div class="code-snippet-wrap">
-            <pre id="apiEndpointOutput" class="code-block"></pre>
+            <pre id="apiEndpointOutput" class="code-block">(Type a message above to preview REST endpoint)</pre>
           </div>
         </div>
       </div>
@@ -353,6 +360,6 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     </footer>
   </div>
 
-  <script src="app.js?v=2.5.0"></script>
+  <script src="app.js?v=2.6.0"></script>
 </body>
 </html>

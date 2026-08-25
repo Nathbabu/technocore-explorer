@@ -294,7 +294,7 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
-function generateNonce() {
+function generateFreshNonce() {
   const nowMs = Date.now();
   const randomSuffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
   return `${nowMs}${randomSuffix}`;
@@ -315,17 +315,41 @@ function updateCanonicalPreview() {
   preview.textContent = payload;
 }
 
-function updateComposerOutput() {
-  const room = document.getElementById('compRoom')?.value.trim() || 'technocore';
+function getSelectedComposerRoom() {
+  const select = document.getElementById('compRoomSelect');
+  const custom = document.getElementById('compCustomRoomInput');
+  if (!select) return 'lobby';
+  if (select.value === 'custom') {
+    return (custom?.value.trim()) || 'custom-room';
+  }
+  return select.value;
+}
+
+function updateComposerOutput(forceNewNonce = false) {
+  const room = getSelectedComposerRoom();
   const text = document.getElementById('compText')?.value.trim();
-  
+  const compNonceEl = document.getElementById('compNonce');
   const cliOutput = document.getElementById('cliCommandOutput');
   const apiOutput = document.getElementById('apiEndpointOutput');
   if (!cliOutput || !apiOutput) return;
 
-  const msg = text || '<YOUR_MESSAGE_TEXT>';
-  cliOutput.textContent = `python technocore_agent.py say ${room} "${msg.replace(/"/g, '\"')}"`;
-  apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(msg)}`;
+  if (!text) {
+    cliOutput.textContent = '(Type a message above to generate command and fresh nonce)';
+    apiOutput.textContent = '(Type a message above to preview REST endpoint)';
+    if (forceNewNonce && compNonceEl) {
+      compNonceEl.value = generateFreshNonce();
+    }
+    return;
+  }
+
+  let currentNonce = compNonceEl?.value.trim();
+  if (forceNewNonce || !currentNonce) {
+    currentNonce = generateFreshNonce();
+    if (compNonceEl) compNonceEl.value = currentNonce;
+  }
+
+  cliOutput.textContent = `python technocore_agent.py say ${room} "${text.replace(/"/g, '\"')}"`;
+  apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/${currentNonce}/${encodeURIComponent(text)}`;
 }
 
 function updateSyncTimeDisplay() {
@@ -448,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Room Selector
+  // Room Selector (Live Stream)
   const roomSelect = document.getElementById('roomSelect');
   const customRoomInput = document.getElementById('customRoomInput');
   const activeRoomBadge = document.getElementById('activeRoomBadge');
@@ -632,27 +656,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Composer
-  const compNonce = document.getElementById('compNonce');
-  if (compNonce) compNonce.value = generateNonce();
+  // Message Composer Handlers
+  const compRoomSelect = document.getElementById('compRoomSelect');
+  const compCustomRoomInput = document.getElementById('compCustomRoomInput');
+  const compText = document.getElementById('compText');
 
-  const btnGenNonce = document.getElementById('btnGenNonce');
-  if (btnGenNonce && compNonce) {
-    btnGenNonce.addEventListener('click', () => {
-      compNonce.value = generateNonce();
-      updateComposerOutput();
+  if (compRoomSelect) {
+    compRoomSelect.addEventListener('change', () => {
+      if (compRoomSelect.value === 'custom') {
+        compCustomRoomInput.classList.remove('hidden');
+      } else {
+        compCustomRoomInput.classList.add('hidden');
+      }
+      updateComposerOutput(false);
     });
   }
 
-  ['compRoom', 'compText'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', updateComposerOutput);
-  });
-  updateComposerOutput();
+  if (compCustomRoomInput) {
+    compCustomRoomInput.addEventListener('input', () => updateComposerOutput(false));
+  }
+
+  if (compText) {
+    compText.addEventListener('input', () => updateComposerOutput(false));
+  }
+
+  const btnGenNonce = document.getElementById('btnGenNonce');
+  if (btnGenNonce) {
+    btnGenNonce.addEventListener('click', () => {
+      updateComposerOutput(true);
+    });
+  }
 
   const btnCopy = document.getElementById('btnCopyCli');
   if (btnCopy) {
     btnCopy.addEventListener('click', () => {
+      // Regenerate fresh nonce right at the instant of copying if text exists!
+      if (compText?.value.trim()) {
+        updateComposerOutput(true);
+      }
       const text = document.getElementById('cliCommandOutput').textContent;
       navigator.clipboard.writeText(text).then(() => {
         btnCopy.textContent = '[COPIED]';
