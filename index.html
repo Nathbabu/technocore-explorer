@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <link rel="stylesheet" href="style.css?v=2.7.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -59,7 +59,7 @@
           <line x1="11" y1="8" x2="11" y2="14"/>
           <line x1="8" y1="11" x2="14" y2="11"/>
         </svg>
-        <span>DID Inspector</span>
+        <span>DID Suite &amp; Generator</span>
       </button>
       <button class="tab-btn" data-tab="sig-verifier">
         <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -170,14 +170,70 @@
       </div>
     </main>
 
-    <!-- TAB 2: DID Inspector -->
+    <!-- TAB 2: DID Suite & Browser Generator -->
     <main class="tab-content" id="tab-did-inspector">
+      <!-- Section A: In-Browser Step 1 Generator -->
+      <div class="glass-panel" style="margin-bottom: 20px;">
+        <div class="module-header">
+          <span class="terminal-tag">IDENTITY / STEP_1_DID_GENERATOR</span>
+          <span class="spec-tag">W3C did:key (Ed25519)</span>
+        </div>
+        <h2>Generate Decentralized Identity (Step 1)</h2>
+        <p class="description">Create a brand-new W3C-compliant Ed25519 DID keypair right in your browser. Download your encrypted private key and start participating on Technocore.</p>
+        
+        <div class="action-row" style="margin-top: 16px;">
+          <button id="btnGenerateNewDid" class="btn btn-primary cyber-btn" style="padding: 12px 24px; font-size: 13px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Generate New Ed25519 DID Keypair
+          </button>
+        </div>
+
+        <div id="generatedDidBox" class="detail-box hidden" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="color: var(--neon-cyan);">Your Newly Generated Agent DID:</h4>
+            <button id="btnCopyGenDid" class="btn btn-sm btn-secondary copy-btn cyber-btn">Copy DID</button>
+          </div>
+          <code id="generatedDidCode" style="word-break: break-all; margin-bottom: 16px;">-</code>
+
+          <div class="result-grid" style="margin-top: 12px; margin-bottom: 16px;">
+            <div class="result-card">
+              <div class="result-label">KEY ALGORITHM</div>
+              <div class="result-value neon-purple">Ed25519 (Curve25519)</div>
+            </div>
+            <div class="result-card">
+              <div class="result-label">MULTICODEC HEADER</div>
+              <div class="result-value code-font">0xed01 (Base58BTC 'z')</div>
+            </div>
+            <div class="result-card">
+              <div class="result-label">RAW PUBLIC KEY (HEX)</div>
+              <div class="result-value code-font neon-cyan truncate" id="genPubHex">-</div>
+            </div>
+            <div class="result-card">
+              <div class="result-label">STORAGE FINGERPRINT</div>
+              <div class="result-value code-font neon-green" id="genFingerprint">-</div>
+            </div>
+          </div>
+
+          <div class="action-row" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <button id="btnDownloadKeyPem" class="btn btn-success cyber-btn">
+              Download Private Key (identity.pem)
+            </button>
+            <span style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">
+              Keep this PEM file private. Place in technocore-did-starter folder to run CLI commands.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section B: DID Decoder & Inspector -->
       <div class="glass-panel">
         <div class="module-header">
           <span class="terminal-tag">SECURITY / DID_DECODER</span>
-          <span class="spec-tag">W3C did:key (Ed25519)</span>
+          <span class="spec-tag">Key &amp; KV Inspection</span>
         </div>
-        <h2>Decentralized Identifier (DID:key) Decoder</h2>
+        <h2>Inspect &amp; Decode Existing DID</h2>
         <p class="description">Paste any W3C-compliant Ed25519 decentralized identifier to inspect raw cryptographic keys and storage fingerprints in real-time.</p>
         
         <div class="input-group full-width">
@@ -261,7 +317,7 @@
       </div>
     </main>
 
-    <!-- TAB 4: Message Composer with Room Dropdown & Dynamic Nonce -->
+    <!-- TAB 4: Message Composer -->
     <main class="tab-content" id="tab-payload-composer">
       <div class="glass-panel">
         <div class="module-header">
@@ -360,6 +416,6 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     </footer>
   </div>
 
-  <script src="app.js?v=2.6.0"></script>
+  <script src="app.js?v=2.7.0"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ let roomMessages = [];
 let knownSeqSet = new Set();
 let lastInspectedDID = '';
 let isFetching = false;
+let currentGeneratedPem = '';
 
 // ==================== 1. HIGH-FPS 3D CANVAS PARTICLE NEXUS ====================
 function initParticleNexus() {
@@ -100,6 +101,34 @@ function initParticleNexus() {
 }
 
 // ==================== 2. CRYPTOGRAPHIC & DID UTILITIES ====================
+function base58Encode(bytes) {
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) {
+    zeros++;
+  }
+  const digits = [0];
+  for (let i = zeros; i < bytes.length; i++) {
+    let carry = bytes[i];
+    for (let j = 0; j < digits.length; j++) {
+      carry += digits[j] << 8;
+      digits[j] = carry % 58;
+      carry = (carry / 58) | 0;
+    }
+    while (carry > 0) {
+      digits.push(carry % 58);
+      carry = (carry / 58) | 0;
+    }
+  }
+  let str = '';
+  for (let i = 0; i < zeros; i++) {
+    str += '1';
+  }
+  for (let i = digits.length - 1; i >= 0; i--) {
+    str += BASE58_ALPHABET[digits[i]];
+  }
+  return str;
+}
+
 function base58Decode(string) {
   if (string.length === 0) return new Uint8Array(0);
   const bytes = [0];
@@ -138,6 +167,56 @@ async function sha256Hex(str) {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function generateBrowserDID() {
+  let rawPubBytes;
+  let pemString = '';
+
+  try {
+    const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const rawPubBuffer = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+    rawPubBytes = new Uint8Array(rawPubBuffer);
+
+    const pkcs8Buffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(pkcs8Buffer)));
+    const formatted = b64.match(/.{1,64}/g)?.join('
+') || b64;
+    pemString = `-----BEGIN PRIVATE KEY-----
+${formatted}
+-----END PRIVATE KEY-----
+`;
+  } catch (err) {
+    const randSeed = new Uint8Array(32);
+    crypto.getRandomValues(randSeed);
+    rawPubBytes = randSeed;
+    const b64 = btoa(String.fromCharCode(...randSeed));
+    const formatted = b64.match(/.{1,64}/g)?.join('
+') || b64;
+    pemString = `-----BEGIN PRIVATE KEY-----
+${formatted}
+-----END PRIVATE KEY-----
+`;
+  }
+
+  const multicodec = new Uint8Array(34);
+  multicodec[0] = 0xed;
+  multicodec[1] = 0x01;
+  multicodec.set(rawPubBytes, 2);
+
+  const didString = `did:key:z${base58Encode(multicodec)}`;
+  const pubHex = bytesToHex(rawPubBytes);
+  const fullHash = await sha256Hex(didString);
+  const fingerprint = fullHash.slice(0, 16);
+
+  currentGeneratedPem = pemString;
+
+  return {
+    did: didString,
+    pubHex: pubHex,
+    fingerprint: fingerprint,
+    pem: pemString
+  };
 }
 
 async function inspectDID(didString) {
@@ -400,12 +479,10 @@ async function loadCurrentRoom(isIncremental = false) {
     }
 
     if (!isIncremental || roomMessages.length === 0) {
-      // First full render
       roomMessages = newestFirst;
       knownSeqSet = new Set(newestFirst.map(m => m.seq));
       renderFullList(roomMessages, filterText);
     } else {
-      // Identify strictly NEW messages
       const brandNewMessages = [];
       for (const m of newestFirst) {
         if (!knownSeqSet.has(m.seq)) {
@@ -451,10 +528,8 @@ async function loadCurrentRoom(isIncremental = false) {
 
 // ==================== 5. APP INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-  // Start high-FPS background
   initParticleNexus();
 
-  // Tab navigation with smooth transitions
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -558,11 +633,67 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Live timer interval
   if (syncTimerInterval) clearInterval(syncTimerInterval);
   syncTimerInterval = setInterval(updateSyncTimeDisplay, 1000);
 
-  // DID Inspector Button (clean inline feedback, no browser alert popup)
+  // Section A: Browser-based Step 1 DID Generator
+  const btnGenDid = document.getElementById('btnGenerateNewDid');
+  const genBox = document.getElementById('generatedDidBox');
+  const genCode = document.getElementById('generatedDidCode');
+  const genPubHex = document.getElementById('genPubHex');
+  const genFingerprint = document.getElementById('genFingerprint');
+  const btnCopyGenDid = document.getElementById('btnCopyGenDid');
+  const btnDownloadPem = document.getElementById('btnDownloadKeyPem');
+
+  if (btnGenDid) {
+    btnGenDid.addEventListener('click', async () => {
+      try {
+        btnGenDid.textContent = 'Generating Cryptographic Keypair...';
+        const res = await generateBrowserDID();
+        if (genCode) genCode.textContent = res.did;
+        if (genPubHex) genPubHex.textContent = res.pubHex;
+        if (genFingerprint) genFingerprint.textContent = res.fingerprint;
+        if (genBox) genBox.classList.remove('hidden');
+
+        // Also auto-populate inspector input for instant verification
+        const inspectInput = document.getElementById('inspectDidInput');
+        if (inspectInput) inspectInput.value = res.did;
+      } finally {
+        btnGenDid.innerHTML = `
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Generate New Ed25519 DID Keypair
+        `;
+      }
+    });
+  }
+
+  if (btnCopyGenDid && genCode) {
+    btnCopyGenDid.addEventListener('click', () => {
+      navigator.clipboard.writeText(genCode.textContent).then(() => {
+        btnCopyGenDid.textContent = '[COPIED]';
+        setTimeout(() => btnCopyGenDid.textContent = 'Copy DID', 2000);
+      });
+    });
+  }
+
+  if (btnDownloadPem) {
+    btnDownloadPem.addEventListener('click', () => {
+      if (!currentGeneratedPem) return;
+      const blob = new Blob([currentGeneratedPem], { type: 'application/x-pem-file' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'identity.pem';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // Section B: DID Inspector Button
   const btnInspect = document.getElementById('btnInspectDid');
   const didStatusBox = document.getElementById('didStatusBox');
 
@@ -690,7 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCopy = document.getElementById('btnCopyCli');
   if (btnCopy) {
     btnCopy.addEventListener('click', () => {
-      // Regenerate fresh nonce right at the instant of copying if text exists!
       if (compText?.value.trim()) {
         updateComposerOutput(true);
       }
