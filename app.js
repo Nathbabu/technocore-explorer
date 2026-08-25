@@ -5,6 +5,8 @@ const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvw
 // State
 let currentRoom = 'lobby';
 let autoPollInterval = null;
+let lastSyncTimestamp = Date.now();
+let syncTimerInterval = null;
 let roomMessages = [];
 
 // ==================== 1. HIGH-FPS 3D CANVAS PARTICLE NEXUS ====================
@@ -36,13 +38,6 @@ function initParticleNexus() {
       color: Math.random() > 0.4 ? 'rgba(0, 242, 255,' : 'rgba(139, 92, 246,'
     });
   }
-
-  let mouseX = width / 2;
-  let mouseY = height / 2;
-  window.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  });
 
   // FPS Counter
   let lastFrameTime = performance.now();
@@ -198,10 +193,11 @@ async function inspectDID(didString) {
 
 // ==================== 3. LIVE ROOM STREAMING ====================
 async function fetchRoomMessages(room, limit = 25) {
-  // Try local proxy endpoint first
+  const cacheBust = Date.now();
+  // Try local proxy endpoint first with cache buster
   try {
-    const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}`;
-    const res = await fetch(localProxyUrl);
+    const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}&_t=${cacheBust}`;
+    const res = await fetch(localProxyUrl, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (data && data.messages) return data;
@@ -210,10 +206,10 @@ async function fetchRoomMessages(room, limit = 25) {
     // Ignore proxy error and try direct
   }
 
-  // Direct fetch with format=json
+  // Direct fetch with format=json and cache buster
   try {
-    const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}`;
-    const res = await fetch(directUrl);
+    const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}&n=${cacheBust}`;
+    const res = await fetch(directUrl, { cache: 'no-store' });
     if (res.ok) {
       return await res.json();
     }
@@ -310,6 +306,17 @@ function updateComposerOutput() {
   apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(text)}`;
 }
 
+function updateSyncTimeDisplay() {
+  const lastUpdatedEl = document.getElementById('roomLastUpdated');
+  if (!lastUpdatedEl) return;
+  const elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
+  if (elapsedSec < 2) {
+    lastUpdatedEl.textContent = 'Just now (Live)';
+  } else {
+    lastUpdatedEl.textContent = `${elapsedSec}s ago`;
+  }
+}
+
 // ==================== 4. APP INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   // Start high-FPS background
@@ -369,23 +376,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Auto poll toggle (ACTIVE BY DEFAULT for instant live stream)
   const btnToggleAuto = document.getElementById('btnToggleAuto');
+  function startAutoPoll() {
+    if (autoPollInterval) clearInterval(autoPollInterval);
+    autoPollInterval = setInterval(() => loadCurrentRoom(true), 3000);
+    if (btnToggleAuto) {
+      btnToggleAuto.classList.remove('btn-secondary');
+      btnToggleAuto.classList.add('btn-primary');
+      const autoIcon = document.getElementById('autoIcon');
+      if (autoIcon) autoIcon.textContent = '⏸';
+    }
+  }
+
+  function stopAutoPoll() {
+    if (autoPollInterval) {
+      clearInterval(autoPollInterval);
+      autoPollInterval = null;
+    }
+    if (btnToggleAuto) {
+      btnToggleAuto.classList.remove('btn-primary');
+      btnToggleAuto.classList.add('btn-secondary');
+      const autoIcon = document.getElementById('autoIcon');
+      if (autoIcon) autoIcon.textContent = '▶';
+    }
+  }
+
   if (btnToggleAuto) {
     btnToggleAuto.addEventListener('click', () => {
       if (autoPollInterval) {
-        clearInterval(autoPollInterval);
-        autoPollInterval = null;
-        btnToggleAuto.classList.remove('btn-primary');
-        btnToggleAuto.classList.add('btn-secondary');
-        document.getElementById('autoIcon').textContent = '▶';
+        stopAutoPoll();
       } else {
-        autoPollInterval = setInterval(() => loadCurrentRoom(true), 4000);
-        btnToggleAuto.classList.remove('btn-secondary');
-        btnToggleAuto.classList.add('btn-primary');
-        document.getElementById('autoIcon').textContent = '⏸';
+        startAutoPoll();
       }
     });
   }
+
+  // Start live sync timer interval (ticks every second to update "X seconds ago")
+  if (syncTimerInterval) clearInterval(syncTimerInterval);
+  syncTimerInterval = setInterval(updateSyncTimeDisplay, 1000);
 
   // DID Inspector Button
   const btnInspect = document.getElementById('btnInspectDid');
@@ -471,8 +500,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initial Load
+  // Initial Load + Auto Poll Start
   loadCurrentRoom();
+  startAutoPoll();
 });
 
 async function loadCurrentRoom(isSilent = false) {
@@ -481,7 +511,6 @@ async function loadCurrentRoom(isSilent = false) {
   const countEl = document.getElementById('roomCount');
   const firstSeqEl = document.getElementById('roomFirstSeq');
   const lastSeqEl = document.getElementById('roomLastSeq');
-  const lastUpdatedEl = document.getElementById('roomLastUpdated');
 
   try {
     const limit = parseInt(document.getElementById('limitInput').value, 10) || 25;
@@ -491,7 +520,9 @@ async function loadCurrentRoom(isSilent = false) {
     if (countEl) countEl.textContent = data.count || roomMessages.length;
     if (firstSeqEl) firstSeqEl.textContent = data.first_seq || '-';
     if (lastSeqEl) lastSeqEl.textContent = data.last_seq || '-';
-    if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+    
+    lastSyncTimestamp = Date.now();
+    updateSyncTimeDisplay();
 
     if (statusPill && statusText) {
       statusPill.className = 'status-pill online';
@@ -515,7 +546,7 @@ async function loadCurrentRoom(isSilent = false) {
       statusPill.style.background = 'rgba(244,63,94,0.15)';
       statusPill.style.color = '#fda4af';
       statusPill.style.border = '1px solid #f43f5e';
-      statusText.textContent = 'Network Offline / Connecting...';
+      statusText.textContent = 'Network Connecting...';
     }
   }
 }
