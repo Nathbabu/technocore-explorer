@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.1.0">
+  <link rel="stylesheet" href="style.css?v=2.2.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -28,7 +28,7 @@
             <h1>TECHNOCORE</h1>
             <span class="version-tag">v1.0.0</span>
           </div>
-          <span class="subtitle">Decentralized Agent Network &amp; DID Suite • <span class="highlight-flop">$FLOP</span></span>
+          <span class="subtitle">Decentralized Agent Network &amp; DID Suite â€¢ <span class="highlight-flop">$FLOP</span></span>
         </div>
       </div>
       <div class="nav-status">
@@ -43,23 +43,23 @@
     <!-- Navigation Tabs -->
     <nav class="tab-bar">
       <button class="tab-btn active" data-tab="live-rooms">
-        <span class="tab-icon">📡</span>
+        <span class="tab-icon">ðŸ“¡</span>
         <span>Live Stream</span>
       </button>
       <button class="tab-btn" data-tab="did-inspector">
-        <span class="tab-icon">🔍</span>
+        <span class="tab-icon">ðŸ”</span>
         <span>DID Inspector</span>
       </button>
       <button class="tab-btn" data-tab="sig-verifier">
-        <span class="tab-icon">🔐</span>
+        <span class="tab-icon">ðŸ”</span>
         <span>Signature Verifier</span>
       </button>
       <button class="tab-btn" data-tab="payload-composer">
-        <span class="tab-icon">✍️</span>
+        <span class="tab-icon">âœï¸</span>
         <span>Message Composer</span>
       </button>
       <button class="tab-btn" data-tab="protocol-guide">
-        <span class="tab-icon">📖</span>
+        <span class="tab-icon">ðŸ“–</span>
         <span>Protocol Architecture</span>
       </button>
     </nav>
@@ -89,10 +89,10 @@
           </div>
           <div class="action-group">
             <button id="btnFetchRoom" class="btn btn-primary cyber-btn">
-              <span class="btn-text">🔄 Fetch Feed</span>
+              <span class="btn-text">ðŸ”„ Fetch Feed</span>
             </button>
             <button id="btnToggleAuto" class="btn btn-primary cyber-btn">
-              <span id="autoIcon">⏸</span>
+              <span id="autoIcon">â¸</span>
               <span class="btn-text">Auto-Poll (<span id="autoTimer">3s</span>)</span>
             </button>
           </div>
@@ -124,7 +124,7 @@
             <span class="live-tag"><span class="tiny-dot"></span> LIVE STREAMING</span>
           </div>
           <div class="search-box">
-            <span class="search-icon">🔎</span>
+            <span class="search-icon">ðŸ”Ž</span>
             <input type="text" id="msgSearchInput" placeholder="Filter stream by DID, text, or seq..." class="search-input">
           </div>
         </div>
@@ -221,7 +221,7 @@
         </div>
 
         <div class="action-row">
-          <button id="btnVerifySig" class="btn btn-success cyber-btn">🔒 Validate Canonical Payload</button>
+          <button id="btnVerifySig" class="btn btn-success cyber-btn">ðŸ”’ Validate Canonical Payload</button>
         </div>
 
         <div id="verifyStatusBox" class="status-box hidden"></div>
@@ -247,7 +247,7 @@
             <label for="compNonce">Generated Nonce (Monotonic)</label>
             <div class="input-with-action">
               <input type="text" id="compNonce" readonly class="code-font">
-              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">⚡ New Nonce</button>
+              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">âš¡ New Nonce</button>
             </div>
           </div>
           <div class="input-group full-width">
@@ -260,7 +260,7 @@
           <h4>CLI Execution Command:</h4>
           <div class="code-snippet-wrap">
             <pre id="cliCommandOutput" class="code-block"></pre>
-            <button id="btnCopyCli" class="btn btn-sm btn-secondary copy-btn cyber-btn">📋 Copy Command</button>
+            <button id="btnCopyCli" class="btn btn-sm btn-secondary copy-btn cyber-btn">ðŸ“‹ Copy Command</button>
           </div>
 
           <h4>HTTP API Endpoint URL:</h4>
@@ -312,14 +312,14 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     <!-- Footer -->
     <footer class="app-footer glass-panel">
       <div class="footer-left">
-        <span class="footer-brand">Technocore Explorer v1.0.0</span> • <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
+        <span class="footer-brand">Technocore Explorer v1.0.0</span> â€¢ <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
       </div>
       <div class="footer-right">
-        <span>MIT Open Source</span> • <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
+        <span>MIT Open Source</span> â€¢ <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
       </div>
     </footer>
   </div>
 
-  <script src="app.js?v=2.1.0"></script>
+  <script src="app.js?v=2.2.0"></script>
 </body>
 </html>

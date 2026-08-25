@@ -248,23 +248,30 @@ body {
   transform: translateY(-1px);
 }
 
-/* TAB BAR */
+/* TAB BAR - FULL-WIDTH CYBER-GLASS DOCK */
 .tab-bar {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: 100%;
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: var(--bg-surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
-  padding: 10px 18px;
+  padding: 12px 16px;
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -272,7 +279,15 @@ body {
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  text-align: center;
   transform: translate3d(0, 0, 0);
+  user-select: none;
+}
+
+.tab-icon {
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .tab-btn:hover {
@@ -280,14 +295,21 @@ body {
   color: var(--text-main);
   border-color: var(--border-cyan);
   transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 242, 255, 0.15);
 }
 
 .tab-btn.active {
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.2) 0%, rgba(139, 92, 246, 0.25) 100%);
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.22) 0%, rgba(139, 92, 246, 0.28) 100%);
   color: #ffffff;
   border-color: var(--neon-cyan);
-  box-shadow: var(--glow-cyan);
+  box-shadow: 0 4px 20px rgba(0, 242, 255, 0.35), inset 0 0 12px rgba(0, 242, 255, 0.15);
   transform: translateY(-1px);
+}
+
+@media (max-width: 992px) {
+  .tab-bar {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 /* TAB CONTENT SMOOTH 60-120FPS TRANSITION */
