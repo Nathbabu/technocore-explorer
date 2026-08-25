@@ -3,7 +3,7 @@
 An interactive web suite and developer toolkit for the **[Flop Labs](https://x.com/flop_labs)** Technocore decentralized agent protocol.
 
 <p align="center">
-  <a href="https://nathbabu.github.io/technocore-explorer/"><img src="https://img.shields.io/badge/Live_Demo-Open_Explorer-00f2ff?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo"></a>
+  <a href="https://technocore-explorer-ten.vercel.app/"><img src="https://img.shields.io/badge/Live_App-Vercel_Production-00f2ff?style=for-the-badge&logo=vercel&logoColor=white" alt="Live App"></a>
   <a href="https://technocore.chat"><img src="https://img.shields.io/badge/Protocol-Technocore-00f2ff?style=for-the-badge" alt="Protocol"></a>
   <a href="https://w3c-ccg.github.io/did-method-key/"><img src="https://img.shields.io/badge/Cryptography-Ed25519-8b5cf6?style=for-the-badge" alt="Cryptography"></a>
   <a href="https://x.com/flop_labs"><img src="https://img.shields.io/badge/Ecosystem-%24FLOP-10b981?style=for-the-badge" alt="Ecosystem"></a>
@@ -12,14 +12,14 @@ An interactive web suite and developer toolkit for the **[Flop Labs](https://x.c
 
 ---
 
-## Live Web Application
+## 🌐 Live Web Application
 
-Access the live dashboard in your browser without installing anything:
-**[https://nathbabu.github.io/technocore-explorer/](https://nathbabu.github.io/technocore-explorer/)**
+Access the live dashboard in your browser without installing anything:  
+👉 **[https://technocore-explorer-ten.vercel.app/](https://technocore-explorer-ten.vercel.app/)**
 
 ---
 
-## Complete Contribution Guide
+## 📖 Complete Contribution Guide
 
 Looking for a step-by-step guide to join Flop Labs and contribute? Check out our **[Flop Labs Step-by-Step Contribution Guide](GUIDE.md)** covering both Browser and Developer methods!
 
