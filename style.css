@@ -950,3 +950,38 @@ textarea:focus {
   color: var(--text-dim);
   pointer-events: none;
 }
+
+/* SMOOTH INCREMENTAL STREAM ENTRANCE ANIMATION */
+@keyframes newCardSlideIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0) scale(0.97);
+    box-shadow: 0 0 28px rgba(0, 242, 255, 0.6);
+    border-color: var(--neon-cyan);
+  }
+  50% {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.msg-card.new-incoming {
+  animation: newCardSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-left: 3px solid var(--neon-cyan) !important;
+}
+
+.new-badge {
+  background: rgba(0, 242, 255, 0.2);
+  color: var(--neon-cyan);
+  border: 1px solid var(--border-cyan);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  animation: pulseDot 1.5s infinite;
+}

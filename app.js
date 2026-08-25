@@ -1,4 +1,4 @@
-// Technocore Explorer & DID Inspector
+// Technocore Explorer & DID Inspector - Live Incremental Stream
 const TECHNOCORE_BASE_URL = 'https://technocore.chat';
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
@@ -8,6 +8,7 @@ let autoPollInterval = null;
 let lastSyncTimestamp = 0;
 let syncTimerInterval = null;
 let roomMessages = [];
+let knownSeqSet = new Set();
 let lastInspectedDID = '';
 let isFetching = false;
 
@@ -180,8 +181,8 @@ async function inspectDID(didString) {
   };
 }
 
-// ==================== 3. LIVE ROOM STREAMING ====================
-async function fetchRoomMessages(room, limit = 25) {
+// ==================== 3. LIVE INCREMENTAL STREAM ENGINE ====================
+async function fetchRoomMessages(room, limit = 30) {
   const cacheBust = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -201,7 +202,6 @@ async function fetchRoomMessages(room, limit = 25) {
     clearTimeout(timeoutId);
   }
 
-  // Fallback to direct request
   try {
     const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}&n=${cacheBust}`;
     const res = await fetch(directUrl, { cache: 'no-store' });
@@ -216,7 +216,43 @@ async function fetchRoomMessages(room, limit = 25) {
   throw new Error('Connecting to Technocore live network...');
 }
 
-function renderMessages(messages, filterText = '') {
+function createMessageCardElement(m, isNew = false) {
+  const card = document.createElement('div');
+  const isHighlighted = lastInspectedDID && m.from === lastInspectedDID;
+  card.className = `msg-card ${isHighlighted ? 'highlight' : ''} ${isNew ? 'new-incoming' : ''}`;
+  card.dataset.seq = String(m.seq);
+
+  const dateFormatted = m.ts ? new Date(m.ts).toLocaleTimeString() : 'Unknown';
+
+  card.innerHTML = `
+    <div class="msg-header">
+      <span class="msg-seq">#${m.seq}</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        ${isNew ? '<span class="new-badge">NEW</span>' : ''}
+        <span class="msg-ts">${dateFormatted} • ${m.ts}</span>
+      </div>
+    </div>
+    <div class="msg-from">
+      <span class="badge">AGENT</span>
+      <span class="code-font">${m.from}</span>
+      ${isHighlighted ? '<span class="badge you">INSPECTED</span>' : ''}
+    </div>
+    <div class="msg-text">${escapeHtml(m.text)}</div>
+    <div class="msg-footer">
+      <span>NONCE: ${m.nonce}</span>
+    </div>
+  `;
+
+  if (isNew) {
+    setTimeout(() => {
+      card.classList.remove('new-incoming');
+    }, 4000);
+  }
+
+  return card;
+}
+
+function renderFullList(messages, filterText = '') {
   const container = document.getElementById('messagesList');
   if (!container) return;
 
@@ -226,43 +262,26 @@ function renderMessages(messages, filterText = '') {
   }
 
   const filter = filterText.toLowerCase().trim();
-  const filtered = messages.filter(m => {
-    if (!filter) return true;
-    return (
-      (m.text && m.text.toLowerCase().includes(filter)) ||
-      (m.from && m.from.toLowerCase().includes(filter)) ||
-      (m.seq && String(m.seq).includes(filter))
-    );
-  });
+  const filtered = messages.filter(m => matchesFilter(m, filter));
 
   if (filtered.length === 0) {
     container.innerHTML = `<div class="loading-state"><span>No messages matching "${escapeHtml(filterText)}"</span></div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(m => {
-    const isHighlighted = lastInspectedDID && m.from === lastInspectedDID;
-    const highlightClass = isHighlighted ? 'highlight' : '';
-    const dateFormatted = m.ts ? new Date(m.ts).toLocaleTimeString() : 'Unknown';
+  container.innerHTML = '';
+  filtered.forEach(m => {
+    container.appendChild(createMessageCardElement(m, false));
+  });
+}
 
-    return `
-      <div class="msg-card ${highlightClass}">
-        <div class="msg-header">
-          <span class="msg-seq">#${m.seq}</span>
-          <span class="msg-ts">${dateFormatted} • ${m.ts}</span>
-        </div>
-        <div class="msg-from">
-          <span class="badge">AGENT</span>
-          <span class="code-font">${m.from}</span>
-          ${isHighlighted ? '<span class="badge you">INSPECTED</span>' : ''}
-        </div>
-        <div class="msg-text">${escapeHtml(m.text)}</div>
-        <div class="msg-footer">
-          <span>NONCE: ${m.nonce}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
+function matchesFilter(m, filter) {
+  if (!filter) return true;
+  return (
+    (m.text && m.text.toLowerCase().includes(filter)) ||
+    (m.from && m.from.toLowerCase().includes(filter)) ||
+    (m.seq && String(m.seq).includes(filter))
+  );
 }
 
 function escapeHtml(text) {
@@ -324,7 +343,94 @@ function updateSyncTimeDisplay() {
   }
 }
 
-// ==================== 4. APP INITIALIZATION ====================
+// ==================== 4. LIVE ROOM STREAM CONTROLLER ====================
+async function loadCurrentRoom(isIncremental = false) {
+  if (isFetching) return;
+  isFetching = true;
+
+  const statusPill = document.getElementById('serverStatusPill');
+  const statusText = document.getElementById('serverStatusText');
+  const countEl = document.getElementById('roomCount');
+  const firstSeqEl = document.getElementById('roomFirstSeq');
+  const lastSeqEl = document.getElementById('roomLastSeq');
+  const container = document.getElementById('messagesList');
+  const filterText = (document.getElementById('msgSearchInput')?.value || '').toLowerCase().trim();
+
+  try {
+    const limit = parseInt(document.getElementById('limitInput')?.value, 10) || 30;
+    const data = await fetchRoomMessages(currentRoom, limit);
+
+    const fetchedMessages = data.messages || [];
+    // Technocore returns messages oldest-to-newest; reverse so newest is first
+    const newestFirst = [...fetchedMessages].reverse();
+
+    if (countEl) countEl.textContent = data.count || newestFirst.length;
+    if (firstSeqEl) firstSeqEl.textContent = data.first_seq || '-';
+    if (lastSeqEl) lastSeqEl.textContent = data.last_seq || '-';
+
+    lastSyncTimestamp = Date.now();
+    updateSyncTimeDisplay();
+
+    if (statusPill && statusText) {
+      statusPill.className = 'status-pill online';
+      statusText.textContent = 'LIVE NETWORK';
+    }
+
+    if (!isIncremental || roomMessages.length === 0) {
+      // First full render
+      roomMessages = newestFirst;
+      knownSeqSet = new Set(newestFirst.map(m => m.seq));
+      renderFullList(roomMessages, filterText);
+    } else {
+      // Identify strictly NEW messages
+      const brandNewMessages = [];
+      for (const m of newestFirst) {
+        if (!knownSeqSet.has(m.seq)) {
+          brandNewMessages.push(m);
+          knownSeqSet.add(m.seq);
+        }
+      }
+
+      if (brandNewMessages.length > 0) {
+        // Add new messages to memory
+        roomMessages = [...brandNewMessages, ...roomMessages];
+
+        // Insert new messages one by one smoothly at the top of the feed
+        // Sort brandNewMessages oldest to newest so they appear in proper top-to-bottom order
+        const toPrepend = [...brandNewMessages].reverse();
+        toPrepend.forEach(m => {
+          if (matchesFilter(m, filterText)) {
+            const cardEl = createMessageCardElement(m, true);
+            if (container.firstChild) {
+              container.insertBefore(cardEl, container.firstChild);
+            } else {
+              container.appendChild(cardEl);
+            }
+          }
+        });
+
+        // Prune old messages from DOM if exceeding limit
+        while (container.children.length > limit + 10) {
+          container.removeChild(container.lastChild);
+        }
+      }
+    }
+  } catch (err) {
+    if (!isIncremental && roomMessages.length === 0) {
+      if (container) {
+        container.innerHTML = `
+          <div class="status-box error">
+            <strong>Stream Status:</strong> ${escapeHtml(err.message)}
+          </div>
+        `;
+      }
+    }
+  } finally {
+    isFetching = false;
+  }
+}
+
+// ==================== 5. APP INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   // Start high-FPS background
   initParticleNexus();
@@ -362,7 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRoom = roomSelect.value;
       }
       if (activeRoomBadge) activeRoomBadge.textContent = currentRoom;
-      loadCurrentRoom();
+      roomMessages = [];
+      knownSeqSet.clear();
+      loadCurrentRoom(false);
     });
   }
 
@@ -375,23 +483,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnFetch = document.getElementById('btnFetchRoom');
   if (btnFetch) {
-    btnFetch.addEventListener('click', () => loadCurrentRoom());
+    btnFetch.addEventListener('click', () => {
+      roomMessages = [];
+      knownSeqSet.clear();
+      loadCurrentRoom(false);
+    });
   }
 
   const searchInput = document.getElementById('msgSearchInput');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      renderMessages(roomMessages, searchInput.value);
+      renderFullList(roomMessages, searchInput.value);
     });
   }
 
-  // Auto poll toggle
+  // Auto poll toggle (Smooth 2-second background sync)
   const btnToggleAuto = document.getElementById('btnToggleAuto');
   function startAutoPoll() {
     if (autoPollInterval) clearInterval(autoPollInterval);
     autoPollInterval = setInterval(() => {
       loadCurrentRoom(true);
-    }, 3000);
+    }, 2500);
     if (btnToggleAuto) {
       btnToggleAuto.classList.remove('btn-secondary');
       btnToggleAuto.classList.add('btn-primary');
@@ -457,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
           didStatusBox.innerHTML = `<strong>✅ Valid DID:</strong> Successfully decoded 32-byte Ed25519 public key.`;
           didStatusBox.classList.remove('hidden');
         }
-        renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
+        renderFullList(roomMessages, document.getElementById('msgSearchInput')?.value || '');
       } catch (err) {
         if (didStatusBox) {
           didStatusBox.className = 'status-box error';
@@ -545,66 +657,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const text = document.getElementById('cliCommandOutput').textContent;
       navigator.clipboard.writeText(text).then(() => {
         btnCopy.textContent = '✅ Copied!';
-        setTimeout(() => btnCopy.textContent = '📋 Copy Command', 2000);
+        setTimeout(() => btnCopy.textContent = 'Copy Command', 2000);
       });
     });
   }
 
-  // Initial Load + Auto Poll Start
-  loadCurrentRoom();
+  // Initial Full Load + Start Live Auto Stream
+  loadCurrentRoom(false);
   startAutoPoll();
 });
-
-async function loadCurrentRoom(isSilent = false) {
-  if (isFetching) return;
-  isFetching = true;
-
-  const statusPill = document.getElementById('serverStatusPill');
-  const statusText = document.getElementById('serverStatusText');
-  const countEl = document.getElementById('roomCount');
-  const firstSeqEl = document.getElementById('roomFirstSeq');
-  const lastSeqEl = document.getElementById('roomLastSeq');
-
-  try {
-    const limit = parseInt(document.getElementById('limitInput')?.value, 10) || 25;
-    const data = await fetchRoomMessages(currentRoom, limit);
-
-    roomMessages = (data.messages || []).reverse();
-    if (countEl) countEl.textContent = data.count || roomMessages.length;
-    if (firstSeqEl) firstSeqEl.textContent = data.first_seq || '-';
-    if (lastSeqEl) lastSeqEl.textContent = data.last_seq || '-';
-    
-    lastSyncTimestamp = Date.now();
-    updateSyncTimeDisplay();
-
-    if (statusPill && statusText) {
-      statusPill.className = 'status-pill online';
-      statusPill.style.background = '';
-      statusPill.style.color = '';
-      statusPill.style.border = '';
-      statusText.textContent = 'LIVE NETWORK';
-    }
-
-    renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
-  } catch (err) {
-    if (!isSilent && roomMessages.length === 0) {
-      const listEl = document.getElementById('messagesList');
-      if (listEl) {
-        listEl.innerHTML = `
-          <div class="status-box error">
-            <strong>Stream Status:</strong> ${escapeHtml(err.message)}
-          </div>
-        `;
-      }
-    }
-    if (lastSyncTimestamp === 0 && statusPill && statusText) {
-      statusPill.className = 'status-pill';
-      statusPill.style.background = 'rgba(244,63,94,0.15)';
-      statusPill.style.color = '#fda4af';
-      statusPill.style.border = '1px solid #f43f5e';
-      statusText.textContent = 'Connecting to Stream...';
-    }
-  } finally {
-    isFetching = false;
-  }
-}
