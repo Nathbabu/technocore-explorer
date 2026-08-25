@@ -5,10 +5,11 @@ const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvw
 // State
 let currentRoom = 'lobby';
 let autoPollInterval = null;
-let lastSyncTimestamp = Date.now();
+let lastSyncTimestamp = 0;
 let syncTimerInterval = null;
 let roomMessages = [];
 let lastInspectedDID = '';
+let isFetching = false;
 
 // ==================== 1. HIGH-FPS 3D CANVAS PARTICLE NEXUS ====================
 function initParticleNexus() {
@@ -43,7 +44,6 @@ function initParticleNexus() {
   function render() {
     ctx.clearRect(0, 0, width, height);
 
-    // Update & draw particles
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       p.x += p.vx;
@@ -57,7 +57,6 @@ function initParticleNexus() {
       if (p.z < 0) p.z = 800;
       if (p.z > 800) p.z = 0;
 
-      // Perspective projection
       const fov = 400;
       const scale = fov / (fov + p.z);
       const projX = (p.x - width / 2) * scale + width / 2;
@@ -70,7 +69,6 @@ function initParticleNexus() {
       ctx.fillStyle = `${p.color}${alpha})`;
       ctx.fill();
 
-      // Connect near particles
       for (let j = i + 1; j < particles.length; j++) {
         const p2 = particles[j];
         const dx = p.x - p2.x;
@@ -185,25 +183,34 @@ async function inspectDID(didString) {
 // ==================== 3. LIVE ROOM STREAMING ====================
 async function fetchRoomMessages(room, limit = 25) {
   const cacheBust = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+
   try {
     const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}&_t=${cacheBust}`;
-    const res = await fetch(localProxyUrl, { cache: 'no-store' });
+    const res = await fetch(localProxyUrl, {
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data && data.messages) return data;
     }
   } catch (e) {
-    // Ignore proxy error and try direct
+    clearTimeout(timeoutId);
   }
 
+  // Fallback to direct request
   try {
     const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}&n=${cacheBust}`;
     const res = await fetch(directUrl, { cache: 'no-store' });
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      if (data && data.messages) return data;
     }
   } catch (e) {
-    // Direct failed
+    // Both failed
   }
 
   throw new Error('Connecting to Technocore live network...');
@@ -211,6 +218,8 @@ async function fetchRoomMessages(room, limit = 25) {
 
 function renderMessages(messages, filterText = '') {
   const container = document.getElementById('messagesList');
+  if (!container) return;
+
   if (!messages || messages.length === 0) {
     container.innerHTML = '<div class="loading-state"><span>No messages found in this room.</span></div>';
     return;
@@ -303,6 +312,10 @@ function updateComposerOutput() {
 function updateSyncTimeDisplay() {
   const lastUpdatedEl = document.getElementById('roomLastUpdated');
   if (!lastUpdatedEl) return;
+  if (lastSyncTimestamp === 0) {
+    lastUpdatedEl.textContent = 'Syncing...';
+    return;
+  }
   const elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
   if (elapsedSec < 2) {
     lastUpdatedEl.textContent = 'Live (Just now)';
@@ -376,7 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnToggleAuto = document.getElementById('btnToggleAuto');
   function startAutoPoll() {
     if (autoPollInterval) clearInterval(autoPollInterval);
-    autoPollInterval = setInterval(() => loadCurrentRoom(true), 3000);
+    autoPollInterval = setInterval(() => {
+      loadCurrentRoom(true);
+    }, 3000);
     if (btnToggleAuto) {
       btnToggleAuto.classList.remove('btn-secondary');
       btnToggleAuto.classList.add('btn-primary');
@@ -541,6 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadCurrentRoom(isSilent = false) {
+  if (isFetching) return;
+  isFetching = true;
+
   const statusPill = document.getElementById('serverStatusPill');
   const statusText = document.getElementById('serverStatusText');
   const countEl = document.getElementById('roomCount');
@@ -548,7 +566,7 @@ async function loadCurrentRoom(isSilent = false) {
   const lastSeqEl = document.getElementById('roomLastSeq');
 
   try {
-    const limit = parseInt(document.getElementById('limitInput').value, 10) || 25;
+    const limit = parseInt(document.getElementById('limitInput')?.value, 10) || 25;
     const data = await fetchRoomMessages(currentRoom, limit);
 
     roomMessages = (data.messages || []).reverse();
@@ -561,12 +579,15 @@ async function loadCurrentRoom(isSilent = false) {
 
     if (statusPill && statusText) {
       statusPill.className = 'status-pill online';
+      statusPill.style.background = '';
+      statusPill.style.color = '';
+      statusPill.style.border = '';
       statusText.textContent = 'LIVE NETWORK';
     }
 
     renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
   } catch (err) {
-    if (!isSilent) {
+    if (!isSilent && roomMessages.length === 0) {
       const listEl = document.getElementById('messagesList');
       if (listEl) {
         listEl.innerHTML = `
@@ -576,12 +597,14 @@ async function loadCurrentRoom(isSilent = false) {
         `;
       }
     }
-    if (statusPill && statusText) {
+    if (lastSyncTimestamp === 0 && statusPill && statusText) {
       statusPill.className = 'status-pill';
       statusPill.style.background = 'rgba(244,63,94,0.15)';
       statusPill.style.color = '#fda4af';
       statusPill.style.border = '1px solid #f43f5e';
       statusText.textContent = 'Connecting to Stream...';
     }
+  } finally {
+    isFetching = false;
   }
 }
