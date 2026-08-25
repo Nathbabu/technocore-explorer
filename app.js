@@ -8,6 +8,7 @@ let autoPollInterval = null;
 let lastSyncTimestamp = Date.now();
 let syncTimerInterval = null;
 let roomMessages = [];
+let lastInspectedDID = '';
 
 // ==================== 1. HIGH-FPS 3D CANVAS PARTICLE NEXUS ====================
 function initParticleNexus() {
@@ -156,7 +157,10 @@ async function sha256Hex(str) {
 }
 
 async function inspectDID(didString) {
-  const trimmed = didString.trim();
+  const trimmed = (didString || '').trim();
+  if (!trimmed) {
+    throw new Error('Please enter a DID key string to decode.');
+  }
   if (!trimmed.startsWith('did:key:z6Mk')) {
     throw new Error('Invalid Technocore DID. Must start with "did:key:z6Mk"');
   }
@@ -182,6 +186,8 @@ async function inspectDID(didString) {
   const fullHash = await sha256Hex(trimmed);
   const fingerprint = fullHash.slice(0, 16);
 
+  lastInspectedDID = trimmed;
+
   return {
     did: trimmed,
     codec: '0xed01 (ed25519-pub)',
@@ -194,7 +200,6 @@ async function inspectDID(didString) {
 // ==================== 3. LIVE ROOM STREAMING ====================
 async function fetchRoomMessages(room, limit = 25) {
   const cacheBust = Date.now();
-  // Try local proxy endpoint first with cache buster
   try {
     const localProxyUrl = `/api/r/${encodeURIComponent(room)}?limit=${limit}&_t=${cacheBust}`;
     const res = await fetch(localProxyUrl, { cache: 'no-store' });
@@ -206,7 +211,6 @@ async function fetchRoomMessages(room, limit = 25) {
     // Ignore proxy error and try direct
   }
 
-  // Direct fetch with format=json and cache buster
   try {
     const directUrl = `${TECHNOCORE_BASE_URL}/r/${encodeURIComponent(room)}?format=json&limit=${limit}&n=${cacheBust}`;
     const res = await fetch(directUrl, { cache: 'no-store' });
@@ -217,7 +221,7 @@ async function fetchRoomMessages(room, limit = 25) {
     // Direct failed
   }
 
-  throw new Error('Unable to connect to Technocore API. Ensure the local server is running on port 8080.');
+  throw new Error('Connecting to Technocore live network...');
 }
 
 function renderMessages(messages, filterText = '') {
@@ -243,8 +247,8 @@ function renderMessages(messages, filterText = '') {
   }
 
   container.innerHTML = filtered.map(m => {
-    const isOurDid = m.from === 'did:key:z6MkecMwpAGtgcj64rSeDMw91xGRgQcRAW2n8LDGSFeWmstY';
-    const highlightClass = isOurDid ? 'highlight' : '';
+    const isHighlighted = lastInspectedDID && m.from === lastInspectedDID;
+    const highlightClass = isHighlighted ? 'highlight' : '';
     const dateFormatted = m.ts ? new Date(m.ts).toLocaleTimeString() : 'Unknown';
 
     return `
@@ -256,7 +260,7 @@ function renderMessages(messages, filterText = '') {
         <div class="msg-from">
           <span class="badge">AGENT</span>
           <span class="code-font">${m.from}</span>
-          ${isOurDid ? '<span class="badge you">YOUR DID</span>' : ''}
+          ${isHighlighted ? '<span class="badge you">INSPECTED</span>' : ''}
         </div>
         <div class="msg-text">${escapeHtml(m.text)}</div>
         <div class="msg-footer">
@@ -284,26 +288,31 @@ function generateNonce() {
 }
 
 function updateCanonicalPreview() {
-  const room = document.getElementById('verifyRoom')?.value.trim() || 'lobby';
-  const nonce = document.getElementById('verifyNonce')?.value.trim() || '';
-  const text = document.getElementById('verifyText')?.value.trim() || '';
+  const room = document.getElementById('verifyRoom')?.value.trim();
+  const nonce = document.getElementById('verifyNonce')?.value.trim();
+  const text = document.getElementById('verifyText')?.value.trim();
   const preview = document.getElementById('canonicalPreview');
   if (!preview) return;
   
-  const payload = `${room}|${nonce}|${text}`;
+  if (!room && !nonce && !text) {
+    preview.textContent = '(Enter values above to preview canonical payload)';
+    return;
+  }
+  const payload = `${room || '<room>'}|${nonce || '<nonce>'}|${text || '<message_text>'}`;
   preview.textContent = payload;
 }
 
 function updateComposerOutput() {
   const room = document.getElementById('compRoom')?.value.trim() || 'technocore';
-  const text = document.getElementById('compText')?.value.trim() || 'I published a Technocore contribution...';
+  const text = document.getElementById('compText')?.value.trim();
   
   const cliOutput = document.getElementById('cliCommandOutput');
   const apiOutput = document.getElementById('apiEndpointOutput');
   if (!cliOutput || !apiOutput) return;
 
-  cliOutput.textContent = `python technocore_agent.py say ${room} "${text.replace(/"/g, '\\"')}"`;
-  apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(text)}`;
+  const msg = text || '<YOUR_MESSAGE_TEXT>';
+  cliOutput.textContent = `python technocore_agent.py say ${room} "${msg.replace(/"/g, '\\"')}"`;
+  apiOutput.textContent = `POST ${TECHNOCORE_BASE_URL}/r/${room}/say-signed/<YOUR_DID>/<SIGNATURE_BASE64URL>/<NONCE>/${encodeURIComponent(msg)}`;
 }
 
 function updateSyncTimeDisplay() {
@@ -376,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Auto poll toggle (ACTIVE BY DEFAULT for instant live stream)
+  // Auto poll toggle
   const btnToggleAuto = document.getElementById('btnToggleAuto');
   function startAutoPoll() {
     if (autoPollInterval) clearInterval(autoPollInterval);
@@ -412,11 +421,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Start live sync timer interval (ticks every second to update "X seconds ago")
+  // Live timer interval
   if (syncTimerInterval) clearInterval(syncTimerInterval);
   syncTimerInterval = setInterval(updateSyncTimeDisplay, 1000);
 
-  // DID Inspector Button
+  // DID Inspector Button (clean, no hardcoded trigger)
   const btnInspect = document.getElementById('btnInspectDid');
   if (btnInspect) {
     btnInspect.addEventListener('click', async () => {
@@ -428,11 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resRawHex').textContent = info.rawHex;
         document.getElementById('resFingerprint').textContent = info.fingerprint;
         document.getElementById('kvPathCode').textContent = info.kvPath;
+        renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
       } catch (err) {
-        alert('Error parsing DID: ' + err.message);
+        alert(err.message);
       }
     });
-    btnInspect.click();
   }
 
   // Signature Verifier
@@ -445,11 +454,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnVerifySig = document.getElementById('btnVerifySig');
   if (btnVerifySig) {
     btnVerifySig.addEventListener('click', async () => {
-      const did = document.getElementById('verifyDid').value.trim();
-      const room = document.getElementById('verifyRoom').value.trim();
-      const nonce = document.getElementById('verifyNonce').value.trim();
-      const text = document.getElementById('verifyText').value.trim();
+      const did = document.getElementById('verifyDid')?.value.trim();
+      const room = document.getElementById('verifyRoom')?.value.trim();
+      const nonce = document.getElementById('verifyNonce')?.value.trim();
+      const text = document.getElementById('verifyText')?.value.trim();
       const statusBox = document.getElementById('verifyStatusBox');
+
+      if (!did || !room || !nonce || !text) {
+        statusBox.className = 'status-box error';
+        statusBox.innerHTML = '<strong>Missing Input:</strong> Please fill in all fields (Room, Nonce, Signer DID, Message) to verify.';
+        statusBox.classList.remove('hidden');
+        return;
+      }
 
       try {
         const didInfo = await inspectDID(did);
