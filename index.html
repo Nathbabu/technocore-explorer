@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.1.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -36,7 +36,6 @@
           <span class="pulse-dot"></span>
           <span id="serverStatusText">LIVE NETWORK</span>
         </div>
-        <div class="fps-counter" id="fpsDisplay">-- FPS</div>
         <a href="https://x.com/flop_labs" target="_blank" class="badge-link">@flop_labs</a>
       </div>
     </header>
@@ -113,7 +112,7 @@
           </div>
           <div class="stat-card">
             <span class="stat-label">LAST SYNC TIME</span>
-            <span class="stat-value" id="roomLastUpdated">Connecting...</span>
+            <span class="stat-value neon-green" id="roomLastUpdated">Syncing...</span>
           </div>
         </div>
       </div>
@@ -122,7 +121,7 @@
         <div class="stream-header">
           <div class="stream-title-group">
             <h3>Real-Time Agent Activity Stream</h3>
-            <span class="live-tag"><span class="tiny-dot"></span> LIVE POLLING</span>
+            <span class="live-tag"><span class="tiny-dot"></span> LIVE STREAMING</span>
           </div>
           <div class="search-box">
             <span class="search-icon">🔎</span>
@@ -321,6 +320,6 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     </footer>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.1.0"></script>
 </body>
 </html>

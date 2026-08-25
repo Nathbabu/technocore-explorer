@@ -56,6 +56,8 @@ body {
   height: 100vh;
   z-index: 0;
   pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .grid-overlay {
@@ -86,17 +88,19 @@ body {
 /* GLASS PANELS */
 .glass-panel {
   background: var(--bg-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+  transform: translate3d(0, 0, 0);
 }
 
 .glass-panel:hover {
-  border-color: rgba(0, 242, 255, 0.2);
+  border-color: rgba(0, 242, 255, 0.25);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 242, 255, 0.08);
 }
 
 /* NAVBAR */
@@ -106,7 +110,7 @@ body {
   align-items: center;
   padding: 16px 24px;
   border: 1px solid rgba(0, 242, 255, 0.2);
-  background: linear-gradient(180deg, rgba(20, 24, 32, 0.9) 0%, rgba(10, 12, 16, 0.85) 100%);
+  background: linear-gradient(180deg, rgba(20, 24, 32, 0.92) 0%, rgba(10, 12, 16, 0.88) 100%);
 }
 
 .brand {
@@ -134,7 +138,7 @@ body {
 }
 
 .brand-logo-img:hover {
-  transform: rotateY(15deg) rotateX(-10deg) scale(1.08);
+  transform: rotateY(18deg) rotateX(-12deg) scale(1.1);
 }
 
 .logo-glow {
@@ -144,14 +148,14 @@ body {
   right: -4px;
   bottom: -4px;
   border-radius: 14px;
-  background: radial-gradient(circle, rgba(0, 242, 255, 0.4) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(0, 242, 255, 0.45) 0%, transparent 70%);
   z-index: -1;
-  animation: pulseLogo 3s infinite alternate;
+  animation: pulseLogo 3s infinite alternate cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 @keyframes pulseLogo {
   0% { opacity: 0.4; transform: scale(0.95); }
-  100% { opacity: 0.9; transform: scale(1.05); }
+  100% { opacity: 0.95; transform: scale(1.08); }
 }
 
 .brand-title-row {
@@ -167,7 +171,7 @@ body {
   background: linear-gradient(135deg, #ffffff 30%, var(--neon-cyan) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+  text-shadow: 0 0 24px rgba(0, 242, 255, 0.35);
 }
 
 .version-tag {
@@ -209,6 +213,7 @@ body {
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.4);
   color: #34d399;
+  transition: all 0.3s ease;
 }
 
 .pulse-dot {
@@ -216,23 +221,13 @@ body {
   height: 8px;
   border-radius: 50%;
   background: #10b981;
-  box-shadow: 0 0 10px #10b981;
-  animation: pulseDot 1.5s infinite;
+  box-shadow: 0 0 12px #10b981;
+  animation: pulseDot 1.6s infinite ease-in-out;
 }
 
 @keyframes pulseDot {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-.fps-counter {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--border-subtle);
-  color: var(--neon-cyan);
+  50% { opacity: 0.35; transform: scale(0.75); }
 }
 
 .badge-link {
@@ -244,12 +239,13 @@ body {
   border: 1px solid var(--border-purple);
   color: #c084fc;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .badge-link:hover {
   background: rgba(139, 92, 246, 0.3);
   box-shadow: var(--glow-purple);
+  transform: translateY(-1px);
 }
 
 /* TAB BAR */
@@ -274,14 +270,16 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  transform: translate3d(0, 0, 0);
 }
 
 .tab-btn:hover {
   background: var(--bg-surface-hover);
   color: var(--text-main);
   border-color: var(--border-cyan);
+  transform: translateY(-2px);
 }
 
 .tab-btn.active {
@@ -289,21 +287,34 @@ body {
   color: #ffffff;
   border-color: var(--neon-cyan);
   box-shadow: var(--glow-cyan);
+  transform: translateY(-1px);
 }
 
-/* TAB CONTENT */
+/* TAB CONTENT SMOOTH 60-120FPS TRANSITION */
 .tab-content {
   display: none;
-  animation: tabFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0;
+  transform: translate3d(0, 12px, 0);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 .tab-content.active {
   display: block;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  animation: tabSmoothEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes tabFadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes tabSmoothEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 /* MODULE HEADERS */
@@ -400,7 +411,7 @@ textarea {
   padding: 10px 14px;
   font-family: var(--font-sans);
   font-size: 13px;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   width: 100%;
 }
 
@@ -421,6 +432,7 @@ textarea:focus {
   outline: none;
   border-color: var(--neon-cyan);
   box-shadow: var(--glow-cyan);
+  transform: translate3d(0, -1px, 0);
 }
 
 .input-with-action,
@@ -441,7 +453,7 @@ textarea:focus {
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   border: none;
   display: inline-flex;
   align-items: center;
@@ -449,6 +461,7 @@ textarea:focus {
   gap: 8px;
   position: relative;
   text-transform: uppercase;
+  transform: translate3d(0, 0, 0);
 }
 
 .cyber-btn {
@@ -462,8 +475,8 @@ textarea:focus {
 
 .btn-primary:hover {
   background: #38f8ff;
-  box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
-  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(0, 242, 255, 0.7);
+  transform: translate3d(0, -2px, 0);
 }
 
 .btn-secondary {
@@ -473,9 +486,10 @@ textarea:focus {
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   border-color: var(--border-cyan);
   color: var(--neon-cyan);
+  transform: translate3d(0, -2px, 0);
 }
 
 .btn-success {
@@ -485,8 +499,8 @@ textarea:focus {
 
 .btn-success:hover {
   background: #34d399;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.7);
+  transform: translate3d(0, -2px, 0);
 }
 
 .btn-sm {
@@ -505,13 +519,19 @@ textarea:focus {
 }
 
 .stat-card {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-cyan);
 }
 
 .stat-label {
@@ -626,16 +646,29 @@ textarea:focus {
   border-left: 3px solid rgba(0, 242, 255, 0.4);
   border-radius: var(--radius-sm);
   padding: 16px 20px;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  animation: cardSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform: translate3d(0, 0, 0);
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .msg-card:hover {
-  transform: translateY(-2px);
+  transform: translate3d(0, -3px, 0);
   border-color: var(--border-cyan);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), var(--glow-cyan);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), var(--glow-cyan);
 }
 
 .msg-card.highlight {
@@ -801,6 +834,7 @@ textarea:focus {
   padding: 14px 18px;
   border-radius: var(--radius-sm);
   font-size: 13px;
+  animation: cardSlideIn 0.25s ease both;
 }
 
 .status-box.success {

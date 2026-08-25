@@ -24,7 +24,7 @@ function initParticleNexus() {
     height = canvas.height = window.innerHeight;
   });
 
-  const numParticles = Math.min(80, Math.floor((width * height) / 18000));
+  const numParticles = Math.min(75, Math.floor((width * height) / 18000));
   const particles = [];
 
   for (let i = 0; i < numParticles; i++) {
@@ -32,30 +32,15 @@ function initParticleNexus() {
       x: Math.random() * width,
       y: Math.random() * height,
       z: Math.random() * 800,
-      vx: (Math.random() - 0.5) * 0.7,
-      vy: (Math.random() - 0.5) * 0.7,
-      vz: (Math.random() - 0.5) * 0.5,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6,
+      vz: (Math.random() - 0.5) * 0.4,
       radius: Math.random() * 2 + 1,
       color: Math.random() > 0.4 ? 'rgba(0, 242, 255,' : 'rgba(139, 92, 246,'
     });
   }
 
-  // FPS Counter
-  let lastFrameTime = performance.now();
-  let frameCount = 0;
-  let fpsDisplay = document.getElementById('fpsDisplay');
-
   function render() {
-    const now = performance.now();
-    frameCount++;
-    if (now - lastFrameTime >= 1000) {
-      if (fpsDisplay) {
-        fpsDisplay.textContent = `${frameCount} FPS`;
-      }
-      frameCount = 0;
-      lastFrameTime = now;
-    }
-
     ctx.clearRect(0, 0, width, height);
 
     // Update & draw particles
@@ -320,7 +305,7 @@ function updateSyncTimeDisplay() {
   if (!lastUpdatedEl) return;
   const elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
   if (elapsedSec < 2) {
-    lastUpdatedEl.textContent = 'Just now (Live)';
+    lastUpdatedEl.textContent = 'Live (Just now)';
   } else {
     lastUpdatedEl.textContent = `${elapsedSec}s ago`;
   }
@@ -331,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start high-FPS background
   initParticleNexus();
 
-  // Tab navigation
+  // Tab navigation with smooth transitions
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -343,7 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('active');
       const targetId = `tab-${btn.dataset.tab}`;
       const target = document.getElementById(targetId);
-      if (target) target.classList.add('active');
+      if (target) {
+        target.classList.add('active');
+      }
     });
   });
 
@@ -594,7 +581,7 @@ async function loadCurrentRoom(isSilent = false) {
       statusPill.style.background = 'rgba(244,63,94,0.15)';
       statusPill.style.color = '#fda4af';
       statusPill.style.border = '1px solid #f43f5e';
-      statusText.textContent = 'Network Connecting...';
+      statusText.textContent = 'Connecting to Stream...';
     }
   }
 }
