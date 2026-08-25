@@ -1,0 +1,19 @@
+# Identity and private keys (NEVER COMMIT)
+*.pem
+*.key
+*backup*.json
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
