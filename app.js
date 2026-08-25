@@ -180,23 +180,15 @@ async function generateBrowserDID() {
 
     const pkcs8Buffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
     const b64 = btoa(String.fromCharCode(...new Uint8Array(pkcs8Buffer)));
-    const formatted = b64.match(/.{1,64}/g)?.join('
-') || b64;
-    pemString = `-----BEGIN PRIVATE KEY-----
-${formatted}
------END PRIVATE KEY-----
-`;
+    const formatted = b64.match(/.{1,64}/g)?.join('\n') || b64;
+    pemString = `-----BEGIN PRIVATE KEY-----\n${formatted}\n-----END PRIVATE KEY-----\n`;
   } catch (err) {
     const randSeed = new Uint8Array(32);
     crypto.getRandomValues(randSeed);
     rawPubBytes = randSeed;
     const b64 = btoa(String.fromCharCode(...randSeed));
-    const formatted = b64.match(/.{1,64}/g)?.join('
-') || b64;
-    pemString = `-----BEGIN PRIVATE KEY-----
-${formatted}
------END PRIVATE KEY-----
-`;
+    const formatted = b64.match(/.{1,64}/g)?.join('\n') || b64;
+    pemString = `-----BEGIN PRIVATE KEY-----\n${formatted}\n-----END PRIVATE KEY-----\n`;
   }
 
   const multicodec = new Uint8Array(34);
