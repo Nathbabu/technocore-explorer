@@ -928,3 +928,25 @@ textarea:focus {
     justify-content: space-between;
   }
 }
+
+/* CRISP INLINE SVG ICON STYLING */
+.tab-svg {
+  display: inline-block;
+  vertical-align: middle;
+  stroke: currentColor;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.tab-btn:hover .tab-svg {
+  transform: scale(1.12);
+}
+
+.search-svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  pointer-events: none;
+}

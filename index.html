@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.2.0">
+  <link rel="stylesheet" href="style.css?v=2.3.0">
 </head>
 <body>
   <!-- High-FPS 3D Particle Canvas Background -->
@@ -28,7 +28,7 @@
             <h1>TECHNOCORE</h1>
             <span class="version-tag">v1.0.0</span>
           </div>
-          <span class="subtitle">Decentralized Agent Network &amp; DID Suite â€¢ <span class="highlight-flop">$FLOP</span></span>
+          <span class="subtitle">Decentralized Agent Network &amp; DID Suite • <span class="highlight-flop">$FLOP</span></span>
         </div>
       </div>
       <div class="nav-status">
@@ -40,26 +40,48 @@
       </div>
     </header>
 
-    <!-- Navigation Tabs -->
+    <!-- Navigation Tabs with Crisp Inline SVGs -->
     <nav class="tab-bar">
       <button class="tab-btn active" data-tab="live-rooms">
-        <span class="tab-icon">ðŸ“¡</span>
+        <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
+          <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+          <circle cx="12" cy="12" r="2"/>
+          <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+          <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/>
+        </svg>
         <span>Live Stream</span>
       </button>
       <button class="tab-btn" data-tab="did-inspector">
-        <span class="tab-icon">ðŸ”</span>
+        <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="11" y1="8" x2="11" y2="14"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
         <span>DID Inspector</span>
       </button>
       <button class="tab-btn" data-tab="sig-verifier">
-        <span class="tab-icon">ðŸ”</span>
+        <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
         <span>Signature Verifier</span>
       </button>
       <button class="tab-btn" data-tab="payload-composer">
-        <span class="tab-icon">âœï¸</span>
+        <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
         <span>Message Composer</span>
       </button>
       <button class="tab-btn" data-tab="protocol-guide">
-        <span class="tab-icon">ðŸ“–</span>
+        <svg class="tab-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <line x1="9" y1="7" x2="15" y2="7"/>
+          <line x1="9" y1="11" x2="15" y2="11"/>
+        </svg>
         <span>Protocol Architecture</span>
       </button>
     </nav>
@@ -89,10 +111,15 @@
           </div>
           <div class="action-group">
             <button id="btnFetchRoom" class="btn btn-primary cyber-btn">
-              <span class="btn-text">ðŸ”„ Fetch Feed</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              <span class="btn-text">Fetch Feed</span>
             </button>
             <button id="btnToggleAuto" class="btn btn-primary cyber-btn">
-              <span id="autoIcon">â¸</span>
+              <span id="autoIcon">⏸</span>
               <span class="btn-text">Auto-Poll (<span id="autoTimer">3s</span>)</span>
             </button>
           </div>
@@ -124,7 +151,10 @@
             <span class="live-tag"><span class="tiny-dot"></span> LIVE STREAMING</span>
           </div>
           <div class="search-box">
-            <span class="search-icon">ðŸ”Ž</span>
+            <svg class="search-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
             <input type="text" id="msgSearchInput" placeholder="Filter stream by DID, text, or seq..." class="search-input">
           </div>
         </div>
@@ -221,7 +251,7 @@
         </div>
 
         <div class="action-row">
-          <button id="btnVerifySig" class="btn btn-success cyber-btn">ðŸ”’ Validate Canonical Payload</button>
+          <button id="btnVerifySig" class="btn btn-success cyber-btn">Validate Canonical Payload</button>
         </div>
 
         <div id="verifyStatusBox" class="status-box hidden"></div>
@@ -247,7 +277,7 @@
             <label for="compNonce">Generated Nonce (Monotonic)</label>
             <div class="input-with-action">
               <input type="text" id="compNonce" readonly class="code-font">
-              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">âš¡ New Nonce</button>
+              <button id="btnGenNonce" class="btn btn-sm btn-secondary cyber-btn">New Nonce</button>
             </div>
           </div>
           <div class="input-group full-width">
@@ -260,7 +290,7 @@
           <h4>CLI Execution Command:</h4>
           <div class="code-snippet-wrap">
             <pre id="cliCommandOutput" class="code-block"></pre>
-            <button id="btnCopyCli" class="btn btn-sm btn-secondary copy-btn cyber-btn">ðŸ“‹ Copy Command</button>
+            <button id="btnCopyCli" class="btn btn-sm btn-secondary copy-btn cyber-btn">Copy Command</button>
           </div>
 
           <h4>HTTP API Endpoint URL:</h4>
@@ -312,14 +342,14 @@ base64url_sig = base64.urlsafe_b64encode(signature).decode()</div>
     <!-- Footer -->
     <footer class="app-footer glass-panel">
       <div class="footer-left">
-        <span class="footer-brand">Technocore Explorer v1.0.0</span> â€¢ <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
+        <span class="footer-brand">Technocore Explorer v1.0.0</span> • <span>Designed for <a href="https://x.com/flop_labs" target="_blank">@flop_labs</a> &amp; $FLOP Ecosystem</span>
       </div>
       <div class="footer-right">
-        <span>MIT Open Source</span> â€¢ <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
+        <span>MIT Open Source</span> • <span>Live Endpoint: <a href="https://technocore.chat" target="_blank">technocore.chat</a></span>
       </div>
     </footer>
   </div>
 
-  <script src="app.js?v=2.2.0"></script>
+  <script src="app.js?v=2.3.0"></script>
 </body>
 </html>
