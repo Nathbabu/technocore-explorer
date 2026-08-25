@@ -159,7 +159,7 @@ async function sha256Hex(str) {
 async function inspectDID(didString) {
   const trimmed = (didString || '').trim();
   if (!trimmed) {
-    throw new Error('Please enter a DID key string to decode.');
+    throw new Error('Please enter a DID key string (starting with did:key:z6Mk...) to decode.');
   }
   if (!trimmed.startsWith('did:key:z6Mk')) {
     throw new Error('Invalid Technocore DID. Must start with "did:key:z6Mk"');
@@ -425,11 +425,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (syncTimerInterval) clearInterval(syncTimerInterval);
   syncTimerInterval = setInterval(updateSyncTimeDisplay, 1000);
 
-  // DID Inspector Button (clean, no hardcoded trigger)
+  // DID Inspector Button (clean inline feedback, no browser alert popup)
   const btnInspect = document.getElementById('btnInspectDid');
+  const didStatusBox = document.getElementById('didStatusBox');
+
   if (btnInspect) {
     btnInspect.addEventListener('click', async () => {
-      const input = document.getElementById('inspectDidInput').value;
+      const input = document.getElementById('inspectDidInput')?.value.trim();
+      
+      if (!input) {
+        if (didStatusBox) {
+          didStatusBox.className = 'status-box error';
+          didStatusBox.innerHTML = '<strong>Input required:</strong> Please paste a <code>did:key:z6Mk...</code> string to decode.';
+          didStatusBox.classList.remove('hidden');
+        }
+        return;
+      }
+
       try {
         const info = await inspectDID(input);
         document.getElementById('resDidFormat').textContent = info.codec.includes('ed25519') ? 'W3C did:key (Ed25519)' : 'Custom DID';
@@ -437,9 +449,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resRawHex').textContent = info.rawHex;
         document.getElementById('resFingerprint').textContent = info.fingerprint;
         document.getElementById('kvPathCode').textContent = info.kvPath;
+        
+        if (didStatusBox) {
+          didStatusBox.className = 'status-box success';
+          didStatusBox.innerHTML = `<strong>✅ Valid DID:</strong> Successfully decoded 32-byte Ed25519 public key.`;
+          didStatusBox.classList.remove('hidden');
+        }
         renderMessages(roomMessages, document.getElementById('msgSearchInput')?.value || '');
       } catch (err) {
-        alert(err.message);
+        if (didStatusBox) {
+          didStatusBox.className = 'status-box error';
+          didStatusBox.innerHTML = `<strong>Decoding Error:</strong> ${escapeHtml(err.message)}`;
+          didStatusBox.classList.remove('hidden');
+        }
+        document.getElementById('resDidFormat').textContent = '-';
+        document.getElementById('resCodec').textContent = '-';
+        document.getElementById('resRawHex').textContent = '-';
+        document.getElementById('resFingerprint').textContent = '-';
       }
     });
   }
@@ -461,9 +487,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusBox = document.getElementById('verifyStatusBox');
 
       if (!did || !room || !nonce || !text) {
-        statusBox.className = 'status-box error';
-        statusBox.innerHTML = '<strong>Missing Input:</strong> Please fill in all fields (Room, Nonce, Signer DID, Message) to verify.';
-        statusBox.classList.remove('hidden');
+        if (statusBox) {
+          statusBox.className = 'status-box error';
+          statusBox.innerHTML = '<strong>Missing Input:</strong> Please fill in all fields (Room, Nonce, Signer DID, Message) to verify.';
+          statusBox.classList.remove('hidden');
+        }
         return;
       }
 
@@ -471,18 +499,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const didInfo = await inspectDID(did);
         const canonical = `${room}|${nonce}|${text}`;
         
-        statusBox.className = 'status-box success';
-        statusBox.innerHTML = `
-          <strong>✅ Valid Canonical Structure &amp; Signer</strong><br>
-          • Signer Key: <code>${didInfo.rawHex.slice(0, 16)}...</code> (Ed25519 verified)<br>
-          • Canonical UTF-8 Bytes: <code>${new TextEncoder().encode(canonical).length} bytes</code><br>
-          • Nonce Syntax: <code>${nonce}</code> (valid monotonic identifier)
-        `;
-        statusBox.classList.remove('hidden');
+        if (statusBox) {
+          statusBox.className = 'status-box success';
+          statusBox.innerHTML = `
+            <strong>✅ Valid Canonical Structure &amp; Signer</strong><br>
+            • Signer Key: <code>${didInfo.rawHex.slice(0, 16)}...</code> (Ed25519 verified)<br>
+            • Canonical UTF-8 Bytes: <code>${new TextEncoder().encode(canonical).length} bytes</code><br>
+            • Nonce Syntax: <code>${nonce}</code> (valid monotonic identifier)
+          `;
+          statusBox.classList.remove('hidden');
+        }
       } catch (e) {
-        statusBox.className = 'status-box error';
-        statusBox.innerHTML = `<strong>❌ Verification Failed:</strong> ${escapeHtml(e.message)}`;
-        statusBox.classList.remove('hidden');
+        if (statusBox) {
+          statusBox.className = 'status-box error';
+          statusBox.innerHTML = `<strong>❌ Verification Failed:</strong> ${escapeHtml(e.message)}`;
+          statusBox.classList.remove('hidden');
+        }
       }
     });
   }
